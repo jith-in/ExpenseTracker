@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             xmlns:models="clr-namespace:ExpenseTracker.Models"
+             x:Class="ExpenseTracker.Views.ReportsPage"
+             x:DataType="vm:ReportsViewModel"
+             Title="Reports">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="Reports" FontSize="Large" FontAttributes="Bold" />
+
+            <Picker Title="Year" ItemsSource="{Binding AvailableYears}" SelectedItem="{Binding SelectedYear}" />
+
+            <Label Text="Category Wise" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding CategoryReportItems}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:CategoryReportItem">
+                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding Category}" />
+                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="Monthly Wise" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding MonthlyReportItems}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:MonthlyReportItem">
+                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding MonthName}" />
+                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="Payment Method Wise" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding PaymentMethodReportItems}" SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:PaymentMethodReportItem">
+                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding PaymentMethod}" />
+                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="{Binding StatusMessage}" TextColor="Red" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

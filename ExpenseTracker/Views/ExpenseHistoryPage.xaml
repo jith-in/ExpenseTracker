@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             xmlns:models="clr-namespace:ExpenseTracker.Models"
+             x:Class="ExpenseTracker.Views.ExpenseHistoryPage"
+             x:DataType="vm:ExpenseHistoryViewModel"
+             x:Name="HistoryPage"
+             Title="Expense History">
+
+    <VerticalStackLayout Padding="20" Spacing="16">
+        <Label Text="Expense History" FontSize="Large" FontAttributes="Bold" />
+
+        <SearchBar
+            Placeholder="Search by category, note, merchant or reference"
+            Text="{Binding SearchText}"
+            SearchCommand="{Binding LoadExpensesCommand}" />
+
+        <RefreshView
+            IsRefreshing="{Binding IsRefreshing}"
+            Command="{Binding RefreshCommand}">
+            <CollectionView
+                ItemsSource="{Binding FilteredExpenses}"
+                SelectionMode="None">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Expense">
+                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                <VerticalStackLayout Grid.RowSpan="2" Spacing="4">
+                                    <Label Text="{Binding Category}" FontAttributes="Bold" />
+                                    <Label Text="{Binding Note}" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Date, StringFormat='{0:dd MMM yyyy}'}" FontSize="Small" TextColor="Gray" />
+                                </VerticalStackLayout>
+
+                                <Label
+                                    Text="{Binding Amount, StringFormat='₹{0:F2}'}"
+                                    Grid.Column="1"
+                                    VerticalOptions="Start"
+                                    FontAttributes="Bold" />
+
+                                <HorizontalStackLayout Grid.Row="1" Grid.ColumnSpan="2" Spacing="10" HorizontalOptions="End">
+                                    <Button
+                                        Text="Edit"
+                                        Command="{Binding Source={x:Reference HistoryPage}, Path=BindingContext.EditExpenseCommand}"
+                                        CommandParameter="{Binding .}" />
+                                    <Button
+                                        Text="Delete"
+                                        TextColor="White"
+                                        BackgroundColor="Crimson"
+                                        Command="{Binding Source={x:Reference HistoryPage}, Path=BindingContext.DeleteExpenseCommand}"
+                                        CommandParameter="{Binding .}" />
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </VerticalStackLayout>
+</ContentPage>

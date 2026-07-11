@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             x:Class="ExpenseTracker.Views.AddExpensePage"
+             x:DataType="vm:AddExpenseViewModel"
+             Title="Add Expense">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="New Expense" FontSize="Large" FontAttributes="Bold" />
+
+            <Entry Placeholder="Amount" Keyboard="Numeric" Text="{Binding AmountText}" />
+
+            <Picker Title="Category" ItemsSource="{Binding Categories}" ItemDisplayBinding="{Binding Name}" SelectedItem="{Binding SelectedCategory}" />
+
+            <Picker Title="Payment Method" ItemsSource="{Binding PaymentMethods}" ItemDisplayBinding="{Binding Name}" SelectedItem="{Binding SelectedPaymentMethod}" />
+
+            <DatePicker Date="{Binding Date}" />
+
+            <Editor HeightRequest="100" Placeholder="Notes" Text="{Binding Note}" />
+
+            <Button Text="Save Expense" Command="{Binding SaveExpenseCommand}" />
+
+            <Label Text="{Binding StatusMessage}" TextColor="Green" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

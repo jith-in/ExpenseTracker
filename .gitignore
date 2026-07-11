@@ -1,0 +1,61 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+TestResults/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Xamarin/Maui
+*.apk
+*.ap_ 
+*.aab
+*.xamarin*
+*.xap
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.app
+*.dSYM
+*.pdb
+
+# Mac
+.DS_Store
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# User-specific files
+*.pidb
+*.userprefs
+
+# Others
+*.publishsettings
+
+# Generated files
+**/obj/**
+**/bin/**

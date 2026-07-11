@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             x:Class="ExpenseTracker.Views.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Title="Settings">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="Settings" FontSize="Large" FontAttributes="Bold" />
+
+            <Button Text="Export Expenses to CSV" Command="{Binding ExportCsvCommand}" />
+            <Button Text="Create Backup" Command="{Binding CreateBackupCommand}" />
+            <Button Text="Restore Backup" Command="{Binding RestoreBackupCommand}" />
+
+            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                <Label Text="Dark Mode" VerticalOptions="Center" />
+                <Switch IsToggled="{Binding IsDarkModeEnabled}" />
+            </HorizontalStackLayout>
+
+            <Label Text="{Binding StatusMessage}" TextColor="Green" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

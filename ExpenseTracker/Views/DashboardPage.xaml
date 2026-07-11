@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             xmlns:models="clr-namespace:ExpenseTracker.Models"
+             x:Class="ExpenseTracker.Views.DashboardPage"
+             x:DataType="vm:DashboardViewModel"
+             Title="Dashboard">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            <Label Text="Dashboard" FontSize="Large" FontAttributes="Bold" />
+
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+                <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16" Margin="0,0,10,0">
+                    <VerticalStackLayout>
+                        <Label Text="Today" FontAttributes="Bold" />
+                        <Label Text="{Binding TodayTotal, StringFormat='₹{0:F2}'}" FontSize="24" />
+                    </VerticalStackLayout>
+                </Frame>
+                <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16">
+                    <VerticalStackLayout>
+                        <Label Text="This Month" FontAttributes="Bold" />
+                        <Label Text="{Binding MonthTotal, StringFormat='₹{0:F2}'}" FontSize="24" />
+                    </VerticalStackLayout>
+                </Frame>
+                <Frame Grid.ColumnSpan="2" BackgroundColor="LightGray" CornerRadius="12" Padding="16">
+                    <VerticalStackLayout>
+                        <Label Text="This Year" FontAttributes="Bold" />
+                        <Label Text="{Binding YearTotal, StringFormat='₹{0:F2}'}" FontSize="24" />
+                    </VerticalStackLayout>
+                </Frame>
+            </Grid>
+
+            <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16">
+                <VerticalStackLayout>
+                    <Label Text="Pending Imported SMS" FontAttributes="Bold" />
+                    <Label Text="{Binding PendingImports}" FontSize="24" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Label Text="Top Categories" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding TopCategories}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CategorySummary">
+                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding Category}" />
+                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Text="Recent Expenses" FontAttributes="Bold" />
+            <CollectionView ItemsSource="{Binding RecentExpenses}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Expense">
+                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout>
+                                    <Label Text="{Binding Category}" FontAttributes="Bold" />
+                                    <Label Text="{Binding Note}" LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+                                <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" />
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

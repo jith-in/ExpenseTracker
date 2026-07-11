@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             xmlns:models="clr-namespace:ExpenseTracker.Models"
+             x:Class="ExpenseTracker.Views.NewTransactionsPage"
+             x:Name="NewTransactionsPageRoot"
+             x:DataType="vm:NewTransactionsViewModel"
+             Title="New Transactions">
+
+    <VerticalStackLayout Padding="20" Spacing="16">
+        <Label Text="New Transactions" FontSize="Large" FontAttributes="Bold" />
+
+        <Label Text="{Binding StatusMessage}" TextColor="Red" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
+
+        <Button Text="Refresh" Command="{Binding LoadNewTransactionsCommand}" />
+
+        <CollectionView ItemsSource="{Binding ImportedTransactions}" SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:ImportedTransaction">
+                    <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="{Binding Merchant}" FontAttributes="Bold" />
+                            <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}" />
+                            <Label Text="Suggested: {Binding SuggestedCategory}" />
+                            <Label Text="{Binding TransactionType}" FontSize="Small" TextColor="Gray" />
+                            <Label Text="{Binding ReferenceNumber}" FontSize="Small" TextColor="Gray" />
+                            <Label Text="{Binding SmsContent}" LineBreakMode="TailTruncation" MaxLines="2" />
+
+                            <HorizontalStackLayout Spacing="12">
+                                <Button Text="Edit" Command="{Binding Source={x:Reference Name=NewTransactionsPageRoot}, Path=BindingContext.EditTransactionCommand}" CommandParameter="{Binding .}" />
+                                <Button Text="Accept" Command="{Binding Source={x:Reference Name=NewTransactionsPageRoot}, Path=BindingContext.AcceptTransactionCommand}" CommandParameter="{Binding .}" />
+                                <Button Text="Ignore" BackgroundColor="LightGray" Command="{Binding Source={x:Reference Name=NewTransactionsPageRoot}, Path=BindingContext.IgnoreTransactionCommand}" CommandParameter="{Binding .}" />
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
+</ContentPage>
