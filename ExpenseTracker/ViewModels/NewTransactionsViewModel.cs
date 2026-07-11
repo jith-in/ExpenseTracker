@@ -55,12 +55,15 @@ namespace ExpenseTracker.ViewModels
 
             try
             {
+                Debug.WriteLine("SmsReaderService: User initiated SMS import.");
+
                 if (!await _smsReaderService.CheckSmsPermissionAsync())
                 {
                     var requestResult = await _smsReaderService.RequestSmsPermissionAsync();
                     if (!requestResult)
                     {
                         StatusMessage = "SMS permission is required to import new transactions.";
+                        Debug.WriteLine("SmsReaderService: READ_SMS permission denied by user.");
                         return;
                     }
                 }
@@ -72,7 +75,7 @@ namespace ExpenseTracker.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Startup: NewTransactionsViewModel.LoadNewTransactionsAsync failed: {ex}");
-                throw;
+                StatusMessage = "Failed to load new transactions.";
             }
             finally
             {

@@ -29,17 +29,10 @@ namespace ExpenseTracker.Views
             Debug.WriteLine("Startup: NewTransactionsPage ctor end");
         }
 
-        protected override async void OnAppearing()
+        protected override void OnAppearing()
         {
             base.OnAppearing();
-            try
-            {
-                await ((NewTransactionsViewModel)BindingContext).LoadNewTransactionsAsync();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Startup: NewTransactionsPage OnAppearing failed: {ex}");
-            }
+            Debug.WriteLine("Startup: NewTransactionsPage OnAppearing called.");
         }
     }
 }
