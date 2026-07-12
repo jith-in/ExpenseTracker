@@ -43,7 +43,7 @@
             <CollectionView ItemsSource="{Binding TopCategories}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="vm:CategorySummary">
-                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Text="{Binding Category}" />
                                 <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
@@ -57,7 +57,7 @@
             <CollectionView ItemsSource="{Binding RecentExpenses}">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:Expense">
-                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto">
                                 <VerticalStackLayout>
                                     <Label Text="{Binding Category}" FontAttributes="Bold" />

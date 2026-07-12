@@ -17,7 +17,7 @@
             <CollectionView ItemsSource="{Binding CategoryReportItems}" SelectionMode="None">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:CategoryReportItem">
-                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Text="{Binding Category}" />
                                 <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
@@ -31,7 +31,7 @@
             <CollectionView ItemsSource="{Binding MonthlyReportItems}" SelectionMode="None">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:MonthlyReportItem">
-                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Text="{Binding MonthName}" />
                                 <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
@@ -45,7 +45,7 @@
             <CollectionView ItemsSource="{Binding PaymentMethodReportItems}" SelectionMode="None">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:PaymentMethodReportItem">
-                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Text="{Binding PaymentMethod}" />
                                 <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />

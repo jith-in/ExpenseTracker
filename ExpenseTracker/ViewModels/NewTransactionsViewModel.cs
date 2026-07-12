@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExpenseTracker.Interfaces;
 using ExpenseTracker.Models;
@@ -33,100 +33,105 @@ namespace ExpenseTracker.ViewModels
             ISmsImportService smsImportService,
             IExpenseRepository repository)
         {
-            Debug.WriteLine("Startup: NewTransactionsViewModel ctor begin");
             _smsReaderService = smsReaderService;
             _smsImportService = smsImportService;
             _repository = repository;
             Title = "New Transactions";
-            Debug.WriteLine("Startup: NewTransactionsViewModel ctor end");
         }
 
         [RelayCommand]
         public async Task LoadNewTransactionsAsync()
         {
-            if (IsBusy)
-            {
-                return;
-            }
+            if (IsBusy) return;
 
-            Debug.WriteLine("Startup: NewTransactionsViewModel.LoadNewTransactionsAsync begin");
             IsBusy = true;
-            IsRefreshing = true; // Updates the UI loading indicator if using RefreshView
+            IsRefreshing = true;
             StatusMessage = string.Empty;
 
             try
             {
-                Debug.WriteLine("SmsReaderService: User initiated SMS import.");
-
                 if (!await _smsReaderService.CheckSmsPermissionAsync())
                 {
                     var requestResult = await _smsReaderService.RequestSmsPermissionAsync();
                     if (!requestResult)
                     {
-                        StatusMessage = "SMS permission is required to import new transactions.";
-                        Debug.WriteLine("SmsReaderService: READ_SMS permission denied by user.");
+                        StatusMessage = "SMS permission is required.";
                         return;
                     }
                 }
 
-                // 1. Fetch SMS and run the import service to process and save any brand-new messages
                 var smsBodies = await _smsReaderService.GetRecentSmsBodiesAsync();
                 await _smsImportService.ParseIncomingMessagesAsync(smsBodies);
 
-                // 2. Retrieve all unprocessed transactions from your local database repository.
-                // Note: Replace 'GetImportedTransactionsAsync' with the actual method name defined in your IExpenseRepository.
                 var allImportedTransactions = await _repository.GetImportedTransactionsAsync();
 
-                // Filter out transactions that have already been accepted or ignored
+                if (allImportedTransactions.Any())
+                {
+                    // Use the null-coalescing operator to determine the "effective" date
+                    var minDate = allImportedTransactions.Min(t => t.TransactionDate ?? t.SmsReceivedDate);
+                    var maxDate = allImportedTransactions.Max(t => t.TransactionDate ?? t.SmsReceivedDate);
+                    Debug.WriteLine($"Debug: Oldest: {minDate:yyyy-MM-dd}, Newest: {maxDate:yyyy-MM-dd}");
+                }
+
+                DateTime today = DateTime.Today;
+                DateTime startDate = today.Day < 20
+                    ? new DateTime(today.Year, today.Month, 20).AddMonths(-1)
+                    : new DateTime(today.Year, today.Month, 20);
+
+                DateTime endDate = startDate.AddMonths(1);
+
                 var unprocessed = allImportedTransactions
-                    .Where(t => !t.IsProcessed)
+                    .Where(t => !t.IsProcessed && (t.TransactionDate ?? t.SmsReceivedDate) >= startDate && (t.TransactionDate ?? t.SmsReceivedDate) < endDate)
+                    .OrderBy(t => t.TransactionDate ?? t.SmsReceivedDate)
                     .ToList();
 
-                // 3. Bind the list of unprocessed transactions to the UI
                 ImportedTransactions = new ObservableCollection<ImportedTransaction>(unprocessed);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Startup: NewTransactionsViewModel.LoadNewTransactionsAsync failed: {ex}");
+                Debug.WriteLine($"Error loading transactions: {ex}");
                 StatusMessage = "Failed to load new transactions.";
             }
             finally
             {
                 IsBusy = false;
-                IsRefreshing = false; // Turn off the UI loading spinner
-                Debug.WriteLine("Startup: NewTransactionsViewModel.LoadNewTransactionsAsync end");
+                IsRefreshing = false;
             }
+        }
+
+        // ✅ ADDED: This method generates the ViewFullMessageCommand automatically
+        [RelayCommand]
+        public async Task ViewFullMessageAsync(ImportedTransaction transaction)
+        {
+            if (transaction == null) return;
+            await Shell.Current.DisplayAlert("Full Message", transaction.SmsContent, "Close");
         }
 
         [RelayCommand]
         public async Task EditTransactionAsync(ImportedTransaction transaction)
         {
-            if (transaction == null || IsBusy)
-            {
-                return;
-            }
+            if (transaction == null || IsBusy) return;
 
-            try
-            {
-                var route = $"AddExpensePage?amount={transaction.Amount}&merchant={Uri.EscapeDataString(transaction.Merchant)}&date={Uri.EscapeDataString(transaction.Date.ToString("o"))}&category={Uri.EscapeDataString(transaction.SuggestedCategory)}&importId={transaction.Id}";
-                await Shell.Current.GoToAsync(route);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Startup: NewTransactionsViewModel.EditTransactionAsync failed: {ex}");
-                throw;
-            }
+            // Use the effective date for editing
+            var effectiveDate = transaction.TransactionDate ?? transaction.SmsReceivedDate;
+
+            var navigationParameters = new Dictionary<string, object>
+    {
+        { "amount", transaction.Amount.ToString() },
+        { "merchant", transaction.Merchant },
+        { "date", effectiveDate.ToString("o") },
+        { "category", transaction.SuggestedCategory },
+        { "importId", transaction.Id.ToString() }
+    };
+
+            await Shell.Current.GoToAsync("///AddExpensePage", navigationParameters);
         }
 
         [RelayCommand]
         public async Task AcceptTransactionAsync(ImportedTransaction transaction)
         {
-            if (transaction == null || IsBusy)
-            {
-                return;
-            }
+            if (transaction == null || IsBusy) return;
 
-            Debug.WriteLine("Startup: NewTransactionsViewModel.AcceptTransactionAsync begin");
             IsBusy = true;
             try
             {
@@ -137,10 +142,13 @@ namespace ExpenseTracker.ViewModels
                     Merchant = transaction.Merchant,
                     TransactionType = transaction.TransactionType,
                     ReferenceNumber = transaction.ReferenceNumber,
-                    Date = transaction.Date,
+                    // Assign the effective date here
+                    Date = transaction.TransactionDate ?? transaction.SmsReceivedDate,
                     Note = transaction.SmsContent,
                     IsImported = true,
-                    PaymentMethod = "UPI"
+                    PaymentMethod = string.IsNullOrWhiteSpace(transaction.SuggestedPaymentMethod)
+                        ? "Net Banking"
+                        : transaction.SuggestedPaymentMethod
                 };
 
                 await _repository.SaveExpenseAsync(expense);
@@ -158,37 +166,19 @@ namespace ExpenseTracker.ViewModels
                 await _repository.SaveImportedTransactionAsync(transaction);
                 ImportedTransactions.Remove(transaction);
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Startup: NewTransactionsViewModel.AcceptTransactionAsync failed: {ex}");
-                throw;
-            }
             finally
             {
                 IsBusy = false;
-                Debug.WriteLine("Startup: NewTransactionsViewModel.AcceptTransactionAsync end");
             }
         }
 
         [RelayCommand]
         public async Task IgnoreTransactionAsync(ImportedTransaction transaction)
         {
-            if (transaction == null)
-            {
-                return;
-            }
-
-            try
-            {
-                transaction.IsProcessed = true;
-                await _repository.SaveImportedTransactionAsync(transaction);
-                ImportedTransactions.Remove(transaction);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Startup: NewTransactionsViewModel.IgnoreTransactionAsync failed: {ex}");
-                throw;
-            }
+            if (transaction == null) return;
+            transaction.IsProcessed = true;
+            await _repository.SaveImportedTransactionAsync(transaction);
+            ImportedTransactions.Remove(transaction);
         }
     }
 }

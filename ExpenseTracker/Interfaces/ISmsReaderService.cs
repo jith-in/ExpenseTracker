@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ExpenseTracker.Models; // Ensure this is imported for SmsMessageData
 
 namespace ExpenseTracker.Interfaces
 {
@@ -7,6 +8,8 @@ namespace ExpenseTracker.Interfaces
     {
         Task<bool> CheckSmsPermissionAsync();
         Task<bool> RequestSmsPermissionAsync();
-        Task<IEnumerable<string>> GetRecentSmsBodiesAsync(int maxMessages = 100);
+
+        // Ensure this return type matches your service implementation
+        Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAsync(int maxMessages = 100);
     }
 }

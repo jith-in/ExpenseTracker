@@ -6,7 +6,7 @@ namespace ExpenseTracker.Interfaces
 {
     public interface ISmsImportService
     {
-        Task<IEnumerable<ImportedTransaction>> ParseIncomingMessagesAsync(IEnumerable<string> messageBodies);
+        Task<IEnumerable<ImportedTransaction>> ParseIncomingMessagesAsync(IEnumerable<SmsMessageData> messages);
         Task<bool> IsDuplicateImportAsync(ImportedTransaction transaction);
     }
 }

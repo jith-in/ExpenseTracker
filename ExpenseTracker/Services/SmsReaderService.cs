@@ -3,6 +3,9 @@ using Microsoft.Maui.ApplicationModel;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using ExpenseTracker.Models;
+using System;
+using System.Linq;
 
 #if ANDROID
 using Android.App;
@@ -35,12 +38,13 @@ namespace ExpenseTracker.Services
 #endif
         }
 
-        public Task<IEnumerable<string>> GetRecentSmsBodiesAsync(int maxMessages = 100)
+        public Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAsync(int maxMessages = 100)
         {
 #if ANDROID
             return GetRecentSmsBodiesAndroidAsync(maxMessages);
 #else
-            return Task.FromResult<IEnumerable<string>>(new List<string>());
+            // Must return Task<IEnumerable<SmsMessageData>>
+            return Task.FromResult<IEnumerable<SmsMessageData>>(new List<SmsMessageData>());
 #endif
         }
 
@@ -63,81 +67,73 @@ namespace ExpenseTracker.Services
             return granted;
         }
 
-        private static async Task<IEnumerable<string>> GetRecentSmsBodiesAndroidAsync(int maxMessages)
+        private static async Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAndroidAsync(int maxMessages)
         {
-            var result = new List<string>();
+            var result = new List<SmsMessageData>();
             if (!await CheckSmsPermissionAndroidAsync().ConfigureAwait(false))
             {
-                Debug.WriteLine("SmsReaderService: READ_SMS permission not granted, skipping SMS read.");
                 return result;
             }
 
+            // 1. Calculate the 20th-to-20th cycle boundaries
+            DateTime today = DateTime.Today;
+            DateTime startDate = today.Day >= 20
+                ? new DateTime(today.Year, today.Month, 20)
+                : new DateTime(today.Year, today.Month, 20).AddMonths(-1);
+
+            DateTime endDate = startDate.AddMonths(1);
+
+            long startMillis = new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
+            long endMillis = new DateTimeOffset(endDate).ToUnixTimeMilliseconds();
+
+            // 2. Prepare Query
             var uri = Telephony.Sms.Inbox.ContentUri;
-            if (uri == null)
-            {
-                Debug.WriteLine("SmsReaderService: Telephony.Sms.Inbox.ContentUri is null.");
-                return result;
-            }
-
             var contentResolver = Android.App.Application.Context?.ContentResolver;
-            if (contentResolver == null)
-            {
-                Debug.WriteLine("SmsReaderService: Android application context or ContentResolver is null.");
-                return result;
-            }
 
-            var projection = new[] { Telephony.Sms.InterfaceConsts.Body };
+            var projection = new[] {
+                Telephony.Sms.InterfaceConsts.Body,
+                Telephony.Sms.InterfaceConsts.Date
+            };
+
+            // Use SQL selection to filter at the database level
+            string selection = $"{Telephony.Sms.InterfaceConsts.Date} >= ? AND {Telephony.Sms.InterfaceConsts.Date} < ?";
+            string[] selectionArgs = { startMillis.ToString(), endMillis.ToString() };
+
             var sortOrder = Telephony.Sms.DefaultSortOrder;
 
             ICursor? cursor = null;
             try
             {
-                cursor = contentResolver.Query(uri, projection, null, null, sortOrder);
-                if (cursor == null)
-                {
-                    Debug.WriteLine("SmsReaderService: SMS query returned null cursor.");
-                    return result;
-                }
+                cursor = contentResolver?.Query(uri, projection, selection, selectionArgs, sortOrder);
+                if (cursor == null) return result;
 
-                var bodyIndex = cursor.GetColumnIndex(Telephony.Sms.InterfaceConsts.Body);
+                var bodyIndex = cursor.GetColumnIndexOrThrow(Telephony.Sms.InterfaceConsts.Body);
+                var dateIndex = cursor.GetColumnIndexOrThrow(Telephony.Sms.InterfaceConsts.Date);
+
                 var count = 0;
                 while (cursor.MoveToNext() && count < maxMessages)
                 {
                     var body = cursor.GetString(bodyIndex);
+                    long timestamp = cursor.GetLong(dateIndex);
+
+                    // Convert milliseconds to local time
+                    DateTime receivedDate = DateTimeOffset.FromUnixTimeMilliseconds(timestamp).LocalDateTime;
+
                     if (!string.IsNullOrWhiteSpace(body))
                     {
-                        result.Add(body);
+                        result.Add(new SmsMessageData { Body = body, ReceivedDate = receivedDate });
                         count++;
                     }
                 }
-
-                Debug.WriteLine($"SmsReaderService: Read {result.Count} SMS messages.");
-            }
-            catch (Java.Lang.SecurityException ex)
-            {
-                Debug.WriteLine($"SmsReaderService: SecurityException while reading SMS: {ex}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"SmsReaderService: Exception while reading SMS: {ex}");
+                Debug.WriteLine($"SmsReaderService: Error reading filtered SMS: {ex}");
             }
             finally
             {
-                if (cursor != null)
-                {
-                    try
-                    {
-                        cursor.Close();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"SmsReaderService: Failed to close SMS cursor: {ex}");
-                    }
-                    finally
-                    {
-                        cursor.Dispose();
-                    }
-                }
+                cursor?.Close();
+                cursor?.Dispose();
             }
 
             return result;

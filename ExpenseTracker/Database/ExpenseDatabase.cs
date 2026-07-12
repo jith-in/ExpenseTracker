@@ -1,6 +1,7 @@
 using ExpenseTracker.Interfaces;
 using ExpenseTracker.Models;
 using SQLite;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -84,69 +85,100 @@ namespace ExpenseTracker.Database
             }
         }
 
-        public Task<List<Expense>> GetExpensesAsync()
+        public async Task<List<Expense>> GetExpensesAsync()
         {
-            return _db.Table<Expense>().OrderByDescending(x => x.Date).ToListAsync();
+            // FIX: Ensure tables exist before running query
+            await EnsureInitializedAsync();
+            return await _db.Table<Expense>().OrderByDescending(x => x.Date).ToListAsync();
         }
 
         public async Task<Expense?> GetExpenseByIdAsync(int id)
         {
+            await EnsureInitializedAsync();
             return await _db.FindAsync<Expense>(id).ConfigureAwait(false);
         }
 
-        public Task<int> SaveExpenseAsync(Expense expense)
+        public async Task<int> SaveExpenseAsync(Expense expense)
         {
+            await EnsureInitializedAsync();
             if (expense.Id != 0)
             {
-                return _db.UpdateAsync(expense);
+                return await _db.UpdateAsync(expense);
             }
 
-            return _db.InsertAsync(expense);
+            return await _db.InsertAsync(expense);
         }
 
-        public Task<int> DeleteExpenseAsync(Expense expense)
+        public async Task<int> DeleteExpenseAsync(Expense expense)
         {
-            return _db.DeleteAsync(expense);
+            await EnsureInitializedAsync();
+            return await _db.DeleteAsync(expense);
         }
 
-        public Task<List<Category>> GetCategoriesAsync()
+        public async Task<List<Category>> GetCategoriesAsync()
         {
-            return _db.Table<Category>().ToListAsync();
+            await EnsureInitializedAsync();
+            return await _db.Table<Category>().ToListAsync();
         }
 
-        public Task<List<PaymentMethod>> GetPaymentMethodsAsync()
+        public async Task<List<PaymentMethod>> GetPaymentMethodsAsync()
         {
-            return _db.Table<PaymentMethod>().ToListAsync();
+            await EnsureInitializedAsync();
+            return await _db.Table<PaymentMethod>().ToListAsync();
         }
 
-        public Task<List<ImportedTransaction>> GetImportedTransactionsAsync()
+        public async Task<List<ImportedTransaction>> GetImportedTransactionsAsync()
         {
-            return _db.Table<ImportedTransaction>().Where(x => !x.IsProcessed).OrderByDescending(x => x.Date).ToListAsync();
+            await EnsureInitializedAsync();
+
+            // 1. Fetch from DB without the complex OrderBy
+            var transactions = await _db.Table<ImportedTransaction>()
+                .Where(x => !x.IsProcessed)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            // 2. Perform the sorting in memory (where C# handles the ?? operator perfectly)
+            return transactions
+                .OrderByDescending(x => x.TransactionDate ?? x.SmsReceivedDate)
+                .ToList();
         }
 
-        public Task<List<ImportedTransaction>> GetAllImportedTransactionsAsync()
+        public async Task<List<ImportedTransaction>> GetAllImportedTransactionsAsync()
         {
-            return _db.Table<ImportedTransaction>().OrderByDescending(x => x.Date).ToListAsync();
+            await EnsureInitializedAsync();
+
+            // 1. Fetch from DB
+            var transactions = await _db.Table<ImportedTransaction>()
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            // 2. Perform the sorting in memory
+            return transactions
+                .OrderByDescending(x => x.TransactionDate ?? x.SmsReceivedDate)
+                .ToList();
         }
 
-        public Task<int> SaveImportedTransactionAsync(ImportedTransaction importedTransaction)
+        public async Task<int> SaveImportedTransactionAsync(ImportedTransaction importedTransaction)
         {
+            await EnsureInitializedAsync();
             if (importedTransaction.Id != 0)
             {
-                return _db.UpdateAsync(importedTransaction);
+                return await _db.UpdateAsync(importedTransaction);
             }
 
-            return _db.InsertAsync(importedTransaction);
+            return await _db.InsertAsync(importedTransaction);
         }
 
-        public Task<int> MarkImportedTransactionProcessedAsync(ImportedTransaction importedTransaction)
+        public async Task<int> MarkImportedTransactionProcessedAsync(ImportedTransaction importedTransaction)
         {
+            await EnsureInitializedAsync();
             importedTransaction.IsProcessed = true;
-            return _db.UpdateAsync(importedTransaction);
+            return await _db.UpdateAsync(importedTransaction);
         }
 
         public async Task<MerchantCategoryMapping?> GetMerchantCategoryMappingAsync(string merchant)
         {
+            await EnsureInitializedAsync();
             var result = await _db.Table<MerchantCategoryMapping>()
                 .Where(x => x.Merchant == merchant)
                 .FirstOrDefaultAsync().ConfigureAwait(false);
@@ -156,6 +188,7 @@ namespace ExpenseTracker.Database
 
         public async Task<int> SaveMerchantCategoryMappingAsync(MerchantCategoryMapping mapping)
         {
+            await EnsureInitializedAsync();
             var merchant = mapping.Merchant?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(merchant))
             {
@@ -175,6 +208,7 @@ namespace ExpenseTracker.Database
 
         public async Task<List<CategoryReportItem>> GetCategoryReportAsync()
         {
+            await EnsureInitializedAsync();
             var expenses = await _db.Table<Expense>().ToListAsync().ConfigureAwait(false);
             return expenses
                 .GroupBy(x => x.Category)
@@ -189,10 +223,19 @@ namespace ExpenseTracker.Database
 
         public async Task<List<MonthlyReportItem>> GetMonthlyReportAsync(int year)
         {
-            var expenses = await _db.Table<Expense>()
-                .Where(x => x.Date.Year == year)
-                .ToListAsync().ConfigureAwait(false);
+            await EnsureInitializedAsync();
 
+            // 1. Calculate boundaries in C# code beforehand
+            var startDate = new DateTime(year, 1, 1, 0, 0, 0);
+            var endDate = new DateTime(year, 12, 31, 23, 59, 59, 999);
+
+            // 2. Use simple range operators that the SQLite compiler supports natively
+            var expenses = await _db.Table<Expense>()
+                .Where(x => x.Date >= startDate && x.Date <= endDate)
+                .ToListAsync()
+                .ConfigureAwait(false);
+
+            // 3. Keep your in-memory grouping and projection logic exactly the same
             return expenses
                 .GroupBy(x => x.Date.Month)
                 .Select(g => new MonthlyReportItem
@@ -207,6 +250,7 @@ namespace ExpenseTracker.Database
 
         public async Task<List<PaymentMethodReportItem>> GetPaymentMethodReportAsync()
         {
+            await EnsureInitializedAsync();
             var expenses = await _db.Table<Expense>().ToListAsync().ConfigureAwait(false);
             return expenses
                 .GroupBy(x => x.PaymentMethod)
@@ -221,6 +265,7 @@ namespace ExpenseTracker.Database
 
         public async Task<List<int>> GetAvailableExpenseYearsAsync()
         {
+            await EnsureInitializedAsync();
             var expenses = await _db.Table<Expense>().ToListAsync().ConfigureAwait(false);
             return expenses
                 .Select(x => x.Date.Year)
@@ -228,17 +273,33 @@ namespace ExpenseTracker.Database
                 .OrderByDescending(x => x)
                 .ToList();
         }
+
         public async Task<int> DeleteAllImportedTransactionsAsync()
         {
+            // Uses native ORM truncation which maps table schemas dynamically
+            await EnsureInitializedAsync();
             return await _db.DeleteAllAsync<ImportedTransaction>().ConfigureAwait(false);
         }
 
         public async Task<int> DeleteAllUnprocessedTransactionsAsync()
         {
-            var unprocessedCount = await _db.ExecuteAsync(
-                "DELETE FROM ImportedTransaction WHERE IsProcessed = 0"
-            ).ConfigureAwait(false);
-            return unprocessedCount;
+            await EnsureInitializedAsync();
+
+            // 1. Fetch the unprocessed records using the exact same ORM mapping engine that works in your list views
+            var unprocessedItems = await _db.Table<ImportedTransaction>()
+                                            .Where(x => !x.IsProcessed)
+                                            .ToListAsync()
+                                            .ConfigureAwait(false);
+
+            int deletedCount = 0;
+
+            // 2. Safely cycle through and remove the pending items using type-safe database references
+            foreach (var transaction in unprocessedItems)
+            {
+                deletedCount += await _db.DeleteAsync(transaction).ConfigureAwait(false);
+            }
+
+            return deletedCount;
         }
     }
 }

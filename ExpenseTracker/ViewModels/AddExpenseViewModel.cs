@@ -10,7 +10,8 @@ using System.Threading.Tasks;
 
 namespace ExpenseTracker.ViewModels
 {
-    public partial class AddExpenseViewModel : BaseViewModel
+    // FIX: Explicitly added IQueryAttributable interface implementation
+    public partial class AddExpenseViewModel : BaseViewModel, IQueryAttributable
     {
         private readonly IExpenseRepository _repository;
         private string _amountText = string.Empty;
@@ -30,6 +31,9 @@ namespace ExpenseTracker.ViewModels
             _repository = repository;
             Title = "Add Expense";
             SaveExpenseCommand = new AsyncRelayCommand(SaveExpenseAsync);
+
+            // ADDED: Initialize the Cancel Command
+            CancelCommand = new AsyncRelayCommand(CancelAsync);
         }
 
         public string AmountText
@@ -82,6 +86,9 @@ namespace ExpenseTracker.ViewModels
 
         public IAsyncRelayCommand SaveExpenseCommand { get; }
 
+        // ADDED: Expose CancelCommand interface property wrapper
+        public IAsyncRelayCommand CancelCommand { get; }
+
         public async Task LoadOptionsAsync()
         {
             if (IsBusy)
@@ -114,7 +121,8 @@ namespace ExpenseTracker.ViewModels
                     Note = _pendingMerchantName;
                 }
 
-                SelectedPaymentMethod = PaymentMethods.FirstOrDefault();
+                // Default payment method setup for incoming SMS transactions
+                SelectedPaymentMethod = PaymentMethods.FirstOrDefault(p => p.Name == "UPI") ?? PaymentMethods.FirstOrDefault();
             }
             finally
             {
@@ -194,7 +202,7 @@ namespace ExpenseTracker.ViewModels
 
                 if (_pendingImportId > 0)
                 {
-                    // Update merchant learning
+                    // Update merchant learning mappings
                     await _repository.SaveMerchantCategoryMappingAsync(new MerchantCategoryMapping
                     {
                         Merchant = Note?.Trim() ?? string.Empty,
@@ -214,10 +222,12 @@ namespace ExpenseTracker.ViewModels
 
                 if (_pendingImportId > 0)
                 {
-                    await Shell.Current.GoToAsync("..");
+                    // FIX: Changed from flaking relative route ".." to absolute route to safely redirect without backstack context dependencies
+                    await Shell.Current.GoToAsync("///NewTransactionsPage");
                 }
                 else
                 {
+                    // Clean down form entries if adding a standard non-imported expense manually
                     AmountText = string.Empty;
                     Note = string.Empty;
                     Date = DateTime.Today;
@@ -229,6 +239,31 @@ namespace ExpenseTracker.ViewModels
             finally
             {
                 IsBusy = false;
+            }
+        }
+
+        // ADDED: Type-Safe Cancel Method
+        private async Task CancelAsync()
+        {
+            if (IsBusy)
+            {
+                return;
+            }
+
+            if (_pendingImportId > 0)
+            {
+                // Clean down volatile tracking properties to avoid state pollution on subsequent standard views
+                _pendingImportId = 0;
+                _pendingCategoryName = string.Empty;
+                _pendingMerchantName = string.Empty;
+
+                // Absolute route back to the unreviewed transaction queue cleanly
+                await Shell.Current.GoToAsync("///NewTransactionsPage");
+            }
+            else
+            {
+                // Standard contextual back navigation for manual adds
+                await Shell.Current.GoToAsync("..");
             }
         }
     }

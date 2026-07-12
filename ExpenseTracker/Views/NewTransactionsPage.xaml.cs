@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.Input;
+using ExpenseTracker.Models;
 using ExpenseTracker.ViewModels;
 using System.Diagnostics;
 
@@ -41,6 +43,18 @@ namespace ExpenseTracker.Views
             {
                 Debug.WriteLine($"Startup: NewTransactionsPage OnAppearing failed: {ex}");
             }
+        }
+        [RelayCommand]
+        public async Task ViewFullMessageAsync(ImportedTransaction transaction)
+        {
+            if (transaction == null)
+            {
+                Debug.WriteLine("ViewFullMessage: Transaction was null.");
+                return;
+            }
+
+            Debug.WriteLine($"ViewFullMessage: Displaying content for {transaction.Merchant}");
+            await Shell.Current.DisplayAlert("Full Message", transaction.SmsContent, "Close");
         }
     }
 }
