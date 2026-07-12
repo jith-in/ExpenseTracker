@@ -93,5 +93,14 @@ namespace ExpenseTracker.Repositories
         {
             return _database.GetAvailableExpenseYearsAsync();
         }
+        public Task<int> DeleteAllImportedTransactionsAsync()
+        {
+         return _database.DeleteAllImportedTransactionsAsync();
+        }
+
+        public Task<int> DeleteAllUnprocessedTransactionsAsync()
+        {
+        return _database.DeleteAllUnprocessedTransactionsAsync();
+        }
     }
 }

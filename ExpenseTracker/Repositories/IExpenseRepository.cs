@@ -22,5 +22,7 @@ namespace ExpenseTracker.Repositories
         Task<List<MonthlyReportItem>> GetMonthlyReportAsync(int year);
         Task<List<PaymentMethodReportItem>> GetPaymentMethodReportAsync();
         Task<List<int>> GetAvailableExpenseYearsAsync();
+        Task<int> DeleteAllImportedTransactionsAsync();
+        Task<int> DeleteAllUnprocessedTransactionsAsync();
     }
 }

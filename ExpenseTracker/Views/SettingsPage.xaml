@@ -7,19 +7,63 @@
              Title="Settings">
 
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="16">
+        <VerticalStackLayout Padding="20" Spacing="20">
             <Label Text="Settings" FontSize="Large" FontAttributes="Bold" />
 
-            <Button Text="Export Expenses to CSV" Command="{Binding ExportCsvCommand}" />
-            <Button Text="Create Backup" Command="{Binding CreateBackupCommand}" />
-            <Button Text="Restore Backup" Command="{Binding RestoreBackupCommand}" />
+            <!-- Status Message -->
+            <Label Text="{Binding StatusMessage}" 
+                   TextColor="Green" 
+                   IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}"
+                   FontAttributes="Bold" />
 
-            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                <Label Text="Dark Mode" VerticalOptions="Center" />
-                <Switch IsToggled="{Binding IsDarkModeEnabled}" />
-            </HorizontalStackLayout>
+            <!-- Data Management Section -->
+            <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16" Margin="0">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="SMS Messages Management" FontAttributes="Bold" FontSize="16" />
 
-            <Label Text="{Binding StatusMessage}" TextColor="Green" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
+                    <Button Text="Clear All SMS Messages" 
+                            Command="{Binding ClearSmsMessagesCommand}"
+                            BackgroundColor="Red" 
+                            TextColor="White"
+                            Padding="12"
+                            FontAttributes="Bold" />
+
+                    <Label Text="Deletes all imported and processed SMS messages. This cannot be undone." 
+                           FontSize="Small" 
+                           TextColor="Gray" />
+
+                    <Button Text="Clear Pending Messages" 
+                            Command="{Binding ClearUnprocessedMessagesCommand}"
+                            BackgroundColor="Orange" 
+                            TextColor="White"
+                            Padding="12"
+                            FontAttributes="Bold"
+                            Margin="0,10,0,0" />
+
+                    <Label Text="Deletes only unprocessed (pending) SMS messages that you haven't acted on yet." 
+                           FontSize="Small" 
+                           TextColor="Gray" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Info Section -->
+            <Frame BackgroundColor="WhiteSmoke" CornerRadius="12" Padding="16" Margin="0">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="About SMS Messages" FontAttributes="Bold" FontSize="14" />
+
+                    <Label Text="• SMS messages are imported from your device inbox" FontSize="Small" />
+                    <Label Text="• Unprocessed messages await your categorization" FontSize="Small" />
+                    <Label Text="• Processed messages become expense records" FontSize="Small" />
+                    <Label Text="• Clearing does not delete your expense history" FontSize="Small" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <Label Text="" />
+
+            <Label Text="Version 1.0" 
+                   FontSize="Small" 
+                   TextColor="Gray"
+                   HorizontalTextAlignment="Center" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

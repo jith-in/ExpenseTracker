@@ -1,10 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExpenseTracker.Repositories;
-using ExpenseTracker.Services;
-using Microsoft.Maui.Storage;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
@@ -13,140 +10,88 @@ namespace ExpenseTracker.ViewModels
     public partial class SettingsViewModel : BaseViewModel
     {
         private readonly IExpenseRepository _repository;
-        private readonly CsvExportService _csvExportService;
-        private readonly BackupService _backupService;
-
-        [ObservableProperty]
-        private bool isDarkModeEnabled;
 
         [ObservableProperty]
         private string statusMessage = string.Empty;
 
-        public SettingsViewModel(IExpenseRepository repository, CsvExportService csvExportService, BackupService backupService)
+        public SettingsViewModel(IExpenseRepository repository)
         {
             Debug.WriteLine("Startup: SettingsViewModel ctor begin");
             _repository = repository;
-            _csvExportService = csvExportService;
-            _backupService = backupService;
             Title = "Settings";
-            IsDarkModeEnabled = Application.Current?.RequestedTheme == AppTheme.Dark;
             Debug.WriteLine("Startup: SettingsViewModel ctor end");
         }
 
         [RelayCommand]
-        public async Task ExportCsvAsync()
+        public async Task ClearSmsMessagesAsync()
         {
-            if (IsBusy)
-            {
-                return;
-            }
-
-            Debug.WriteLine("Startup: SettingsViewModel.ExportCsvAsync begin");
-            IsBusy = true;
+            Debug.WriteLine("Startup: SettingsViewModel.ClearSmsMessagesAsync begin");
+            
             try
             {
-                var expenses = await _repository.GetExpensesAsync();
-                var exportPath = await _csvExportService.ExportExpensesAsync(expenses);
-                StatusMessage = $"Export saved to {exportPath}";
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Startup: SettingsViewModel.ExportCsvAsync failed: {ex}");
-                throw;
-            }
-            finally
-            {
-                IsBusy = false;
-                Debug.WriteLine("Startup: SettingsViewModel.ExportCsvAsync end");
-            }
-        }
+                var result = await Application.Current!.MainPage!.DisplayAlert(
+                    "Clear SMS Messages",
+                    "Are you sure you want to delete all imported SMS messages? This cannot be undone.",
+                    "Yes, Delete",
+                    "Cancel"
+                );
 
-        [RelayCommand]
-        public async Task CreateBackupAsync()
-        {
-            if (IsBusy)
-            {
-                return;
-            }
-
-            Debug.WriteLine("Startup: SettingsViewModel.CreateBackupAsync begin");
-            IsBusy = true;
-            try
-            {
-                var backupPath = await _backupService.CreateBackupAsync();
-                StatusMessage = $"Backup created at {backupPath}";
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Startup: SettingsViewModel.CreateBackupAsync failed: {ex}");
-                throw;
-            }
-            finally
-            {
-                IsBusy = false;
-                Debug.WriteLine("Startup: SettingsViewModel.CreateBackupAsync end");
-            }
-        }
-
-        [RelayCommand]
-        public async Task RestoreBackupAsync()
-        {
-            if (IsBusy)
-            {
-                return;
-            }
-
-            Debug.WriteLine("Startup: SettingsViewModel.RestoreBackupAsync begin");
-            try
-            {
-                var result = await FilePicker.PickAsync(new PickOptions
+                if (!result)
                 {
-                    PickerTitle = "Select SQLite backup file",
-                    FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-                    {
-                        { DevicePlatform.Android, new[] { "application/x-sqlite3", "application/octet-stream" } },
-                        { DevicePlatform.WinUI, new[] { ".db3", ".sqlite", ".sqlite3" } },
-                        { DevicePlatform.MacCatalyst, new[] { ".db3", ".sqlite", ".sqlite3" } }
-                    })
-                });
-
-                if (result?.FullPath == null)
-                {
-                    StatusMessage = "Restore cancelled.";
+                    Debug.WriteLine("User cancelled SMS deletion.");
                     return;
                 }
 
-                var filePath = result.FullPath;
-                IsBusy = true;
-                try
-                {
-                    var restorePath = await _backupService.RestoreBackupAsync(filePath);
-                    StatusMessage = $"Database restored from {restorePath}";
-                }
-                finally
-                {
-                    IsBusy = false;
-                }
+                StatusMessage = "Clearing SMS messages...";
+                var deletedCount = await _repository.DeleteAllImportedTransactionsAsync();
+                StatusMessage = $"Deleted {deletedCount} SMS messages successfully.";
+                Debug.WriteLine($"Deleted {deletedCount} imported transactions.");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Startup: SettingsViewModel.RestoreBackupAsync failed: {ex}");
-                throw;
+                StatusMessage = $"Error deleting messages: {ex.Message}";
+                Debug.WriteLine($"Error clearing SMS messages: {ex}");
             }
             finally
             {
-                Debug.WriteLine("Startup: SettingsViewModel.RestoreBackupAsync end");
+                Debug.WriteLine("Startup: SettingsViewModel.ClearSmsMessagesAsync end");
             }
         }
 
-        partial void OnIsDarkModeEnabledChanged(bool value)
+        [RelayCommand]
+        public async Task ClearUnprocessedMessagesAsync()
         {
-            if (Application.Current != null)
+            Debug.WriteLine("Startup: SettingsViewModel.ClearUnprocessedMessagesAsync begin");
+            
+            try
             {
-                Application.Current.UserAppTheme = value ? AppTheme.Dark : AppTheme.Light;
-            }
+                var result = await Application.Current!.MainPage!.DisplayAlert(
+                    "Clear Pending Messages",
+                    "Are you sure you want to delete all pending SMS messages?",
+                    "Yes, Delete",
+                    "Cancel"
+                );
 
-            StatusMessage = value ? "Dark mode enabled." : "Light mode enabled.";
+                if (!result)
+                {
+                    Debug.WriteLine("User cancelled unprocessed message deletion.");
+                    return;
+                }
+
+                StatusMessage = "Clearing pending messages...";
+                var deletedCount = await _repository.DeleteAllUnprocessedTransactionsAsync();
+                StatusMessage = $"Deleted {deletedCount} pending messages successfully.";
+                Debug.WriteLine($"Deleted {deletedCount} unprocessed transactions.");
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Error deleting messages: {ex.Message}";
+                Debug.WriteLine($"Error clearing unprocessed messages: {ex}");
+            }
+            finally
+            {
+                Debug.WriteLine("Startup: SettingsViewModel.ClearUnprocessedMessagesAsync end");
+            }
         }
     }
 }

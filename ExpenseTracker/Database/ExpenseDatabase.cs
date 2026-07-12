@@ -228,5 +228,17 @@ namespace ExpenseTracker.Database
                 .OrderByDescending(x => x)
                 .ToList();
         }
+        public async Task<int> DeleteAllImportedTransactionsAsync()
+        {
+            return await _db.DeleteAllAsync<ImportedTransaction>().ConfigureAwait(false);
+        }
+
+        public async Task<int> DeleteAllUnprocessedTransactionsAsync()
+        {
+            var unprocessedCount = await _db.ExecuteAsync(
+                "DELETE FROM ImportedTransaction WHERE IsProcessed = 0"
+            ).ConfigureAwait(false);
+            return unprocessedCount;
+        }
     }
 }
