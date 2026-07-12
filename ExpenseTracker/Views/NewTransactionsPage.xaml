@@ -8,17 +8,32 @@
              x:DataType="vm:NewTransactionsViewModel"
              Title="New Transactions">
 
-    <VerticalStackLayout Padding="20" Spacing="16">
-        <Label Text="New Transactions" FontSize="Large" FontAttributes="Bold" />
+    <!-- Changed to a Grid with defined rows to control screen height allocation -->
+    <Grid RowDefinitions="Auto,Auto,Auto,*" 
+          Padding="20" 
+          RowSpacing="16">
 
-        <Label Text="{Binding StatusMessage}" TextColor="Red" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
+        <Label Grid.Row="0" 
+               Text="New Transactions" 
+               FontSize="Large" 
+               FontAttributes="Bold" />
 
-        <Button Text="Refresh" Command="{Binding LoadNewTransactionsCommand}" />
+        <Label Grid.Row="1" 
+               Text="{Binding StatusMessage}" 
+               TextColor="Red" 
+               IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
 
-        <CollectionView ItemsSource="{Binding ImportedTransactions}" SelectionMode="None" VerticalOptions="FillAndExpand">
+        <Button Grid.Row="2" 
+                Text="Refresh" 
+                Command="{Binding LoadNewTransactionsCommand}" />
+
+        <!-- Placed in Row 3 (the star row) which manages constraints and enables scrolling -->
+        <CollectionView Grid.Row="3" 
+                        ItemsSource="{Binding ImportedTransactions}" 
+                        SelectionMode="None">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:ImportedTransaction">
-                    <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                    <Frame BackgroundColor="Green" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                         <VerticalStackLayout Spacing="8">
                             <Label Text="{Binding Merchant}" FontAttributes="Bold" />
                             <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}" />
@@ -37,5 +52,5 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
-    </VerticalStackLayout>
+    </Grid>
 </ContentPage>

@@ -51,6 +51,7 @@ namespace ExpenseTracker.ViewModels
 
             Debug.WriteLine("Startup: NewTransactionsViewModel.LoadNewTransactionsAsync begin");
             IsBusy = true;
+            IsRefreshing = true; // Updates the UI loading indicator if using RefreshView
             StatusMessage = string.Empty;
 
             try
@@ -68,9 +69,21 @@ namespace ExpenseTracker.ViewModels
                     }
                 }
 
+                // 1. Fetch SMS and run the import service to process and save any brand-new messages
                 var smsBodies = await _smsReaderService.GetRecentSmsBodiesAsync();
-                var newTransactions = await _smsImportService.ParseIncomingMessagesAsync(smsBodies);
-                ImportedTransactions = new ObservableCollection<ImportedTransaction>(newTransactions);
+                await _smsImportService.ParseIncomingMessagesAsync(smsBodies);
+
+                // 2. Retrieve all unprocessed transactions from your local database repository.
+                // Note: Replace 'GetImportedTransactionsAsync' with the actual method name defined in your IExpenseRepository.
+                var allImportedTransactions = await _repository.GetImportedTransactionsAsync();
+
+                // Filter out transactions that have already been accepted or ignored
+                var unprocessed = allImportedTransactions
+                    .Where(t => !t.IsProcessed)
+                    .ToList();
+
+                // 3. Bind the list of unprocessed transactions to the UI
+                ImportedTransactions = new ObservableCollection<ImportedTransaction>(unprocessed);
             }
             catch (Exception ex)
             {
@@ -80,6 +93,7 @@ namespace ExpenseTracker.ViewModels
             finally
             {
                 IsBusy = false;
+                IsRefreshing = false; // Turn off the UI loading spinner
                 Debug.WriteLine("Startup: NewTransactionsViewModel.LoadNewTransactionsAsync end");
             }
         }

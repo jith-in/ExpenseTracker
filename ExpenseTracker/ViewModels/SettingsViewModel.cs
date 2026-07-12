@@ -4,6 +4,7 @@ using ExpenseTracker.Repositories;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls; // Ensure this namespace is present for AppTheme
 
 namespace ExpenseTracker.ViewModels
 {
@@ -14,27 +15,49 @@ namespace ExpenseTracker.ViewModels
         [ObservableProperty]
         private string statusMessage = string.Empty;
 
+        // 1. Define the backing field for the switch binding
+        [ObservableProperty]
+        private bool _isDarkModeEnabled;
+
         public SettingsViewModel(IExpenseRepository repository)
         {
             Debug.WriteLine("Startup: SettingsViewModel ctor begin");
             _repository = repository;
             Title = "Settings";
+
+            // 2. Sync the switch position with the current active theme on load
+            var currentTheme = Application.Current!.UserAppTheme;
+            if (currentTheme == AppTheme.Unspecified)
+            {
+                currentTheme = Application.Current.RequestedTheme;
+            }
+            _isDarkModeEnabled = currentTheme == AppTheme.Dark;
+
             Debug.WriteLine("Startup: SettingsViewModel ctor end");
+        }
+
+        // 3. This runs automatically whenever IsDarkModeEnabled changes
+        partial void OnIsDarkModeEnabledChanged(bool value)
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                Application.Current!.UserAppTheme = value ? AppTheme.Dark : AppTheme.Light;
+            });
         }
 
         [RelayCommand]
         public async Task ClearSmsMessagesAsync()
         {
             Debug.WriteLine("Startup: SettingsViewModel.ClearSmsMessagesAsync begin");
-            
+
             try
             {
-                var result = await Application.Current!.MainPage!.DisplayAlert(
-                    "Clear SMS Messages",
-                    "Are you sure you want to delete all imported SMS messages? This cannot be undone.",
-                    "Yes, Delete",
-                    "Cancel"
-                );
+                var result = await Shell.Current.DisplayAlert(
+                 "Clear SMS Messages",
+                 "Are you sure you want to delete all imported SMS messages? This cannot be undone.",
+                "Yes, Delete",
+                "Cancel"
+ );
 
                 if (!result)
                 {
@@ -62,15 +85,15 @@ namespace ExpenseTracker.ViewModels
         public async Task ClearUnprocessedMessagesAsync()
         {
             Debug.WriteLine("Startup: SettingsViewModel.ClearUnprocessedMessagesAsync begin");
-            
+
             try
             {
-                var result = await Application.Current!.MainPage!.DisplayAlert(
-                    "Clear Pending Messages",
-                    "Are you sure you want to delete all pending SMS messages?",
-                    "Yes, Delete",
-                    "Cancel"
-                );
+                var result = await Shell.Current.DisplayAlert(
+                 "Clear Pending Messages",
+                "Are you sure you want to delete all pending SMS messages?",
+                "Yes, Delete",
+                 "Cancel"
+);
 
                 if (!result)
                 {

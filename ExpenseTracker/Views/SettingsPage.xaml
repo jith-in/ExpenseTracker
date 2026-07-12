@@ -9,6 +9,9 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
             <Label Text="Settings" FontSize="Large" FontAttributes="Bold" />
+            <Button Text="Export Expenses to CSV" Command="{Binding ExportCsvCommand}" />
+            <Button Text="Create Backup" Command="{Binding CreateBackupCommand}" />
+            <Button Text="Restore Backup" Command="{Binding RestoreBackupCommand}" />
 
             <!-- Status Message -->
             <Label Text="{Binding StatusMessage}" 
@@ -17,7 +20,12 @@
                    FontAttributes="Bold" />
 
             <!-- Data Management Section -->
-            <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16" Margin="0">
+            <!-- Configured to use Border container with Dynamic Card Context color parameters -->
+            <Border Background="{DynamicResource CardBackground}" 
+                    StrokeShape="RoundRectangle 12" 
+                    StrokeThickness="0" 
+                    Padding="16" 
+                    Margin="0">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="SMS Messages Management" FontAttributes="Bold" FontSize="16" />
 
@@ -44,10 +52,15 @@
                            FontSize="Small" 
                            TextColor="Gray" />
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <!-- Info Section -->
-            <Frame BackgroundColor="WhiteSmoke" CornerRadius="12" Padding="16" Margin="0">
+            <!-- Configured to use Border container with Dynamic Card Context color parameters -->
+            <Border Background="{DynamicResource CardBackground}" 
+                    StrokeShape="RoundRectangle 12" 
+                    StrokeThickness="0" 
+                    Padding="16" 
+                    Margin="0">
                 <VerticalStackLayout Spacing="8">
                     <Label Text="About SMS Messages" FontAttributes="Bold" FontSize="14" />
 
@@ -56,7 +69,7 @@
                     <Label Text="• Processed messages become expense records" FontSize="Small" />
                     <Label Text="• Clearing does not delete your expense history" FontSize="Small" />
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
             <Label Text="" />
 
@@ -64,6 +77,14 @@
                    FontSize="Small" 
                    TextColor="Gray"
                    HorizontalTextAlignment="Center" />
+
+            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                <Label Text="Dark Mode" VerticalOptions="Center" />
+                <!-- Mode=TwoWay explicitly guarantees UI toggles communicate state changes cleanly down to the ViewModel -->
+                <Switch IsToggled="{Binding IsDarkModeEnabled, Mode=TwoWay}" />
+            </HorizontalStackLayout>
+
+            <Label Text="{Binding StatusMessage}" TextColor="Green" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
