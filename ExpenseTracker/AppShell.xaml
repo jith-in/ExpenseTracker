@@ -31,6 +31,12 @@
             Title="Settings"
             ContentTemplate="{DataTemplate local:SettingsPage}"
             Route="SettingsPage" />
+
+        <!-- ✅ FIXED: Changed prefix from views: to local: to match your top declarations -->
+        <ShellContent Title="Reset Database"
+                      Icon="dotnet_bot.png" 
+                      ContentTemplate="{DataTemplate local:ResetPage}"
+                      Route="ResetPage" />
     </TabBar>
 
 </Shell>

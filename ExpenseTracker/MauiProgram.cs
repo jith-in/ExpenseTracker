@@ -4,6 +4,7 @@ using ExpenseTracker.Interfaces;
 using ExpenseTracker.Repositories;
 using ExpenseTracker.Services;
 using ExpenseTracker.ViewModels;
+using ExpenseTracker.Views;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -40,7 +41,10 @@ namespace ExpenseTracker
             builder.Services.AddTransient<NewTransactionsViewModel>();
             builder.Services.AddTransient<ReportsViewModel>();
             builder.Services.AddTransient<SettingsViewModel>();
-
+            builder.Services.AddTransient<CategoryDetailsPage>();
+            builder.Services.AddTransient<CategoryDetailsViewModel>();
+            builder.Services.AddTransient<ResetPage>();
+            builder.Services.AddTransient<ResetViewModel>();
 #if DEBUG
             builder.Logging.AddDebug();
 #endif

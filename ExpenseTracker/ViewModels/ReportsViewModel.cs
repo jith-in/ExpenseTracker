@@ -1,8 +1,10 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories;
+using Microsoft.Maui.Controls;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -89,6 +91,21 @@ namespace ExpenseTracker.ViewModels
                 IsBusy = false;
                 Debug.WriteLine("Startup: ReportsViewModel.LoadReportsAsync end");
             }
+        }
+
+        
+        [RelayCommand]
+        public async Task ViewCategoryDetailsAsync(CategoryReportItem selectedCategory)
+        {
+            if (selectedCategory == null) return;
+
+            var navigationParameters = new Dictionary<string, object>
+            {
+                { "categoryName", selectedCategory.Category }
+            };
+
+            // Executes shell pipeline navigation targeting registered configuration definitions
+            await Shell.Current.GoToAsync("CategoryDetailsPage", navigationParameters);
         }
     }
 }

@@ -11,7 +11,11 @@ namespace ExpenseTracker
             try
             {
                 InitializeComponent();
+
+                // Registered routes for application navigation
                 Routing.RegisterRoute(nameof(EditExpensePage), typeof(EditExpensePage));
+                Routing.RegisterRoute(nameof(CategoryDetailsPage), typeof(CategoryDetailsPage));
+                Routing.RegisterRoute(nameof(ResetPage), typeof(ResetPage));
             }
             catch (Exception ex)
             {

@@ -24,5 +24,8 @@ namespace ExpenseTracker.Repositories
         Task<List<int>> GetAvailableExpenseYearsAsync();
         Task<int> DeleteAllImportedTransactionsAsync();
         Task<int> DeleteAllUnprocessedTransactionsAsync();
+    
+        Task<List<Expense>> GetExpensesByCategoryAsync(string categoryName);
+        Task ClearAllDataAsync();
     }
 }

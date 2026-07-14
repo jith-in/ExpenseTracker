@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:ExpenseTracker.ViewModels"
+             x:Class="ExpenseTracker.Views.ResetPage"
+             x:DataType="viewmodels:ResetViewModel"
+             Title="{Binding Title}">
+
+    <Grid VerticalOptions="Center" HorizontalOptions="Center" Padding="30">
+        <Border StrokeShape="RoundRectangle 12" 
+                Padding="25" 
+                MaximumWidthRequest="450"
+                BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#1E1E1E}">
+
+            <VerticalStackLayout Spacing="20" HorizontalOptions="Center">
+
+                <!-- Danger Warning Graphic Indicator icon -->
+                <Image Source="dotnet_bot.png" 
+                       HeightRequest="100" 
+                       WidthRequest="100"
+                       HorizontalOptions="Center"/>
+
+                <Label Text="Danger Zone" 
+                       FontSize="22" 
+                       FontAttributes="Bold" 
+                       TextColor="Red"
+                       HorizontalOptions="Center"/>
+
+                <Label Text="Performing a factory reset clears the underlying database. All manual logs, automatic transaction records, parsed balance values, and machine-learned automated categorizations are deleted forever."
+                       FontSize="14"
+                       TextColor="Gray"
+                       HorizontalTextAlignment="Center"
+                       LineBreakMode="WordWrap"/>
+
+                <!-- Activity Loading Indicator -->
+                <ActivityIndicator IsRunning="{Binding IsBusy}" 
+                                   IsVisible="{Binding IsBusy}" 
+                                   HorizontalOptions="Center"/>
+
+
+                <Button Text="Clear All Application Data"
+        Command="{Binding ResetApplicationDataCommand}"
+        BackgroundColor="Red"
+        TextColor="White"
+        FontAttributes="Bold"
+        CornerRadius="8"
+        Padding="15,10"
+        Margin="0,10,0,0">
+                    <Button.Triggers>
+
+                        <DataTrigger TargetType="Button" Binding="{Binding IsBusy}" Value="True">
+                            <Setter Property="IsEnabled" Value="False" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

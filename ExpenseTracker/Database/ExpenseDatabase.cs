@@ -301,5 +301,28 @@ namespace ExpenseTracker.Database
 
             return deletedCount;
         }
+      
+        public async Task<List<Expense>> GetExpensesByCategoryAsync(string categoryName)
+        {
+            await EnsureInitializedAsync();
+
+            return await _db.Table<Expense>()
+                .Where(x => x.Category == categoryName)
+                .OrderByDescending(x => x.Date)
+                .ToListAsync()
+                .ConfigureAwait(false);
+        }
+        // Add to Database/ExpenseDatabase.cs
+        public async Task ClearAllDataAsync()
+        {
+            await EnsureInitializedAsync();
+
+            // Deletes all rows across all entity tables asynchronously
+            await _db.DeleteAllAsync<Expense>().ConfigureAwait(false);
+            await _db.DeleteAllAsync<ImportedTransaction>().ConfigureAwait(false);
+
+            // Clear out learned merchant mappings to completely start fresh
+            await _db.DeleteAllAsync<MerchantCategoryMapping>().ConfigureAwait(false);
+        }
     }
 }

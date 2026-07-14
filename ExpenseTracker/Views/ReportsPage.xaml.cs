@@ -41,5 +41,10 @@ namespace ExpenseTracker.Views
                 Debug.WriteLine($"Startup: ReportsPage OnAppearing failed: {ex}");
             }
         }
+        private async void OnResetClicked(object sender, EventArgs e)
+        {
+            
+            await Shell.Current.GoToAsync(nameof(ResetPage));
+        }
     }
 }

@@ -13,11 +13,18 @@
 
             <Picker Title="Year" ItemsSource="{Binding AvailableYears}" SelectedItem="{Binding SelectedYear}" />
 
+            <!-- Category Wise Section with Tap Drill-down Integration -->
             <Label Text="Category Wise" FontAttributes="Bold" />
             <CollectionView ItemsSource="{Binding CategoryReportItems}" SelectionMode="None">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:CategoryReportItem">
                         <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer 
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ReportsViewModel}}, Path=ViewCategoryDetailsCommand}"
+                                    CommandParameter="{Binding .}" />
+                            </Frame.GestureRecognizers>
+
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Text="{Binding Category}" />
                                 <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
@@ -56,6 +63,12 @@
             </CollectionView>
 
             <Label Text="{Binding StatusMessage}" TextColor="Red" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
+            <Button Text="Go to System Reset"
+                    Clicked="OnResetClicked"
+                    BackgroundColor="DarkRed"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    Margin="0,20,0,0" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

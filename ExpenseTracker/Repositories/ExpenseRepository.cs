@@ -102,5 +102,15 @@ namespace ExpenseTracker.Repositories
         {
         return _database.DeleteAllUnprocessedTransactionsAsync();
         }
+        public async Task<List<Expense>> GetExpensesByCategoryAsync(string categoryName)
+        {
+            
+            return await _database.GetExpensesByCategoryAsync(categoryName);
+        }
+        
+        public async Task ClearAllDataAsync()
+        {
+            await _database.ClearAllDataAsync();
+        }
     }
 }
