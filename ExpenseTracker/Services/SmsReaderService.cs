@@ -1,4 +1,4 @@
-using ExpenseTracker.Interfaces;
+﻿using ExpenseTracker.Interfaces;
 using Microsoft.Maui.ApplicationModel;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,12 +38,11 @@ namespace ExpenseTracker.Services
 #endif
         }
 
-        public Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAsync(int maxMessages = 100)
+        public Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAsync()
         {
 #if ANDROID
-            return GetRecentSmsBodiesAndroidAsync(maxMessages);
+            return GetRecentSmsBodiesAndroidAsync();
 #else
-            // Must return Task<IEnumerable<SmsMessageData>>
             return Task.FromResult<IEnumerable<SmsMessageData>>(new List<SmsMessageData>());
 #endif
         }
@@ -52,7 +51,10 @@ namespace ExpenseTracker.Services
         private static async Task<bool> CheckSmsPermissionAndroidAsync()
         {
             Debug.WriteLine("SmsReaderService: Checking READ_SMS permission.");
-            var status = await Permissions.CheckStatusAsync<Permissions.Sms>().ConfigureAwait(false);
+
+            // Resolved ambiguity using explicit fully qualified MAUI namespace bindings
+            var status = await Microsoft.Maui.ApplicationModel.Permissions.CheckStatusAsync<Microsoft.Maui.ApplicationModel.Permissions.Sms>().ConfigureAwait(false);
+
             var granted = status == PermissionStatus.Granted;
             Debug.WriteLine($"SmsReaderService: READ_SMS permission granted={granted}.");
             return granted;
@@ -61,13 +63,28 @@ namespace ExpenseTracker.Services
         private static async Task<bool> RequestSmsPermissionAndroidAsync()
         {
             Debug.WriteLine("SmsReaderService: Requesting READ_SMS permission.");
-            var status = await Permissions.RequestAsync<Permissions.Sms>().ConfigureAwait(false);
+
+            // Resolved ambiguity using explicit fully qualified MAUI namespace bindings
+            var status = await Microsoft.Maui.ApplicationModel.Permissions.RequestAsync<Microsoft.Maui.ApplicationModel.Permissions.Sms>().ConfigureAwait(false);
+
             var granted = status == PermissionStatus.Granted;
             Debug.WriteLine($"SmsReaderService: READ_SMS permission request granted={granted}.");
             return granted;
         }
 
-        private static async Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAndroidAsync(int maxMessages)
+        private static DateTime GetAdjustedTargetDate(int year, int month)
+        {
+            DateTime targetDate = new DateTime(year, month, 25);
+
+            while (targetDate.DayOfWeek == DayOfWeek.Saturday || targetDate.DayOfWeek == DayOfWeek.Sunday)
+            {
+                targetDate = targetDate.AddDays(-1);
+            }
+
+            return targetDate;
+        }
+
+        private static async Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAndroidAsync()
         {
             var result = new List<SmsMessageData>();
             if (!await CheckSmsPermissionAndroidAsync().ConfigureAwait(false))
@@ -75,30 +92,44 @@ namespace ExpenseTracker.Services
                 return result;
             }
 
-            // 1. Calculate the 20th-to-20th cycle boundaries
             DateTime today = DateTime.Today;
-            DateTime startDate = today.Day >= 20
-                ? new DateTime(today.Year, today.Month, 20)
-                : new DateTime(today.Year, today.Month, 20).AddMonths(-1);
+            DateTime currentMonthTarget = GetAdjustedTargetDate(today.Year, today.Month);
 
-            DateTime endDate = startDate.AddMonths(1);
+            DateTime startDate;
+            DateTime endDate;
+
+            if (today >= currentMonthTarget)
+            {
+                startDate = currentMonthTarget;
+                DateTime nextMonth = today.AddMonths(1);
+                endDate = GetAdjustedTargetDate(nextMonth.Year, nextMonth.Month);
+            }
+            else
+            {
+                DateTime previousMonth = today.AddMonths(-1);
+                startDate = GetAdjustedTargetDate(previousMonth.Year, previousMonth.Month);
+                endDate = currentMonthTarget;
+            }
 
             long startMillis = new DateTimeOffset(startDate).ToUnixTimeMilliseconds();
             long endMillis = new DateTimeOffset(endDate).ToUnixTimeMilliseconds();
 
-            // 2. Prepare Query
             var uri = Telephony.Sms.Inbox.ContentUri;
             var contentResolver = Android.App.Application.Context?.ContentResolver;
+
+            if (uri == null)
+            {
+                Debug.WriteLine("SmsReaderService: SMS Content URI is null.");
+                return result;
+            }
 
             var projection = new[] {
                 Telephony.Sms.InterfaceConsts.Body,
                 Telephony.Sms.InterfaceConsts.Date
             };
 
-            // Use SQL selection to filter at the database level
             string selection = $"{Telephony.Sms.InterfaceConsts.Date} >= ? AND {Telephony.Sms.InterfaceConsts.Date} < ?";
             string[] selectionArgs = { startMillis.ToString(), endMillis.ToString() };
-
             var sortOrder = Telephony.Sms.DefaultSortOrder;
 
             ICursor? cursor = null;
@@ -110,19 +141,16 @@ namespace ExpenseTracker.Services
                 var bodyIndex = cursor.GetColumnIndexOrThrow(Telephony.Sms.InterfaceConsts.Body);
                 var dateIndex = cursor.GetColumnIndexOrThrow(Telephony.Sms.InterfaceConsts.Date);
 
-                var count = 0;
-                while (cursor.MoveToNext() && count < maxMessages)
+                while (cursor.MoveToNext())
                 {
                     var body = cursor.GetString(bodyIndex);
                     long timestamp = cursor.GetLong(dateIndex);
 
-                    // Convert milliseconds to local time
                     DateTime receivedDate = DateTimeOffset.FromUnixTimeMilliseconds(timestamp).LocalDateTime;
 
                     if (!string.IsNullOrWhiteSpace(body))
                     {
                         result.Add(new SmsMessageData { Body = body, ReceivedDate = receivedDate });
-                        count++;
                     }
                 }
             }

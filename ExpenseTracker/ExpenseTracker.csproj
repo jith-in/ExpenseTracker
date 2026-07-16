@@ -73,6 +73,12 @@
 	  <MauiXaml Update="Views\CategoryDetailsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="Views\MonthlyDetailsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\PaymentMethodDetailsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Views\ResetPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

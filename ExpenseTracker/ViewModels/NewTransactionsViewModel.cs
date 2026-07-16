@@ -3,10 +3,10 @@ using CommunityToolkit.Mvvm.Input;
 using ExpenseTracker.Interfaces;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories;
+using System.Collections.ObjectModel;
 using Microsoft.Maui.Controls;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,6 +19,11 @@ namespace ExpenseTracker.ViewModels
         private readonly ISmsImportService _smsImportService;
         private readonly IExpenseRepository _repository;
 
+        // ==========================================
+        // Observable Private Fields
+        // (The source generator uses these to create the upper-case public properties)
+        // ==========================================
+
         [ObservableProperty]
         private ObservableCollection<ImportedTransaction> importedTransactions = new();
 
@@ -27,6 +32,10 @@ namespace ExpenseTracker.ViewModels
 
         [ObservableProperty]
         private string statusMessage = string.Empty;
+
+        // ==========================================
+        // Constructor
+        // ==========================================
 
         public NewTransactionsViewModel(
             ISmsReaderService smsReaderService,
@@ -38,6 +47,10 @@ namespace ExpenseTracker.ViewModels
             _repository = repository;
             Title = "New Transactions";
         }
+
+        // ==========================================
+        // Commands & Core Business Logic
+        // ==========================================
 
         [RelayCommand]
         public async Task LoadNewTransactionsAsync()
@@ -67,7 +80,6 @@ namespace ExpenseTracker.ViewModels
 
                 if (allImportedTransactions.Any())
                 {
-                    // Use the null-coalescing operator to determine the "effective" date
                     var minDate = allImportedTransactions.Min(t => t.TransactionDate ?? t.SmsReceivedDate);
                     var maxDate = allImportedTransactions.Max(t => t.TransactionDate ?? t.SmsReceivedDate);
                     Debug.WriteLine($"Debug: Oldest: {minDate:yyyy-MM-dd}, Newest: {maxDate:yyyy-MM-dd}");
@@ -99,7 +111,6 @@ namespace ExpenseTracker.ViewModels
             }
         }
 
-        // ✅ ADDED: This method generates the ViewFullMessageCommand automatically
         [RelayCommand]
         public async Task ViewFullMessageAsync(ImportedTransaction transaction)
         {
@@ -112,17 +123,16 @@ namespace ExpenseTracker.ViewModels
         {
             if (transaction == null || IsBusy) return;
 
-            // Use the effective date for editing
             var effectiveDate = transaction.TransactionDate ?? transaction.SmsReceivedDate;
 
             var navigationParameters = new Dictionary<string, object>
-    {
-        { "amount", transaction.Amount.ToString() },
-        { "merchant", transaction.Merchant },
-        { "date", effectiveDate.ToString("o") },
-        { "category", transaction.SuggestedCategory },
-        { "importId", transaction.Id.ToString() }
-    };
+            {
+                { "amount", transaction.Amount.ToString() },
+                { "merchant", transaction.Merchant },
+                { "date", effectiveDate.ToString("o") },
+                { "category", transaction.SuggestedCategory },
+                { "importId", transaction.Id.ToString() }
+            };
 
             await Shell.Current.GoToAsync("///AddExpensePage", navigationParameters);
         }
@@ -135,14 +145,18 @@ namespace ExpenseTracker.ViewModels
             IsBusy = true;
             try
             {
+                // Assign correct mathematical sign depending on internal metadata flags
+                decimal adjustedAmount = string.Equals(transaction.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase)
+                    ? -Math.Abs(transaction.Amount)
+                    : Math.Abs(transaction.Amount);
+
                 var expense = new Expense
                 {
-                    Amount = transaction.Amount,
+                    Amount = adjustedAmount,
                     Category = transaction.SuggestedCategory,
                     Merchant = transaction.Merchant,
                     TransactionType = transaction.TransactionType,
                     ReferenceNumber = transaction.ReferenceNumber,
-                    // Assign the effective date here
                     Date = transaction.TransactionDate ?? transaction.SmsReceivedDate,
                     Note = transaction.SmsContent,
                     IsImported = true,
@@ -173,6 +187,70 @@ namespace ExpenseTracker.ViewModels
         }
 
         [RelayCommand]
+        public async Task LogAllTransactionsAsync()
+        {
+            if (IsBusy || ImportedTransactions == null || !ImportedTransactions.Any())
+                return;
+
+            bool isConfirmed = await Shell.Current.DisplayAlert(
+                "Log All Transactions",
+                $"Are you sure you want to approve and log all {ImportedTransactions.Count} new transactions?",
+                "Log All",
+                "Cancel");
+
+            if (!isConfirmed) return;
+
+            IsBusy = true;
+            try
+            {
+                var expensesToInsert = new List<Expense>();
+                var transactionsToUpdate = new List<ImportedTransaction>();
+
+                foreach (var trans in ImportedTransactions.ToList())
+                {
+                    // Enforce mathematical signs to differentiate debits vs credits
+                    decimal adjustedAmount = string.Equals(trans.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase)
+                        ? -Math.Abs(trans.Amount)
+                        : Math.Abs(trans.Amount);
+
+                    expensesToInsert.Add(new Expense
+                    {
+                        Amount = adjustedAmount,
+                        Category = trans.SuggestedCategory ?? "Others",
+                        Date = trans.TransactionDate ?? trans.SmsReceivedDate,
+                        Merchant = trans.Merchant,
+                        TransactionType = trans.TransactionType,
+                        ReferenceNumber = trans.ReferenceNumber,
+                        Note = trans.SmsContent,
+                        IsImported = true,
+                        PaymentMethod = string.IsNullOrWhiteSpace(trans.SuggestedPaymentMethod)
+                            ? "Net Banking"
+                            : trans.SuggestedPaymentMethod
+                    });
+
+                    trans.IsProcessed = true;
+                    transactionsToUpdate.Add(trans);
+                }
+
+                // Call the repository batch execution pipeline method
+                await _repository.BulkLogTransactionsAsync(expensesToInsert, transactionsToUpdate);
+
+                ImportedTransactions.Clear();
+
+                await Shell.Current.DisplayAlert("Success", "All new transactions have been integrated successfully.", "OK");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error during transaction bulk upload execution: {ex}");
+                await Shell.Current.DisplayAlert("Import Error", "Failed to batch process transaction imports.", "OK");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        [RelayCommand]
         public async Task IgnoreTransactionAsync(ImportedTransaction transaction)
         {
             if (transaction == null) return;
@@ -182,3 +260,4 @@ namespace ExpenseTracker.ViewModels
         }
     }
 }
+

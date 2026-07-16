@@ -10,6 +10,6 @@ namespace ExpenseTracker.Interfaces
         Task<bool> RequestSmsPermissionAsync();
 
         // Ensure this return type matches your service implementation
-        Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAsync(int maxMessages = 100);
+        Task<IEnumerable<SmsMessageData>> GetRecentSmsBodiesAsync();
     }
 }

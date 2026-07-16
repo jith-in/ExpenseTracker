@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             xmlns:models="clr-namespace:ExpenseTracker.Models"
+             x:Class="ExpenseTracker.Views.MonthlyDetailsPage"
+             x:DataType="vm:MonthlyDetailsViewModel"
+             Title="Monthly Details">
+
+    <!-- ✅ FIXED: Grid constraints force the layout viewport to remain within device bounds -->
+    <Grid RowDefinitions="Auto,*" Padding="20" RowSpacing="15">
+
+        <!-- Row 0: Dynamic Header Display Component -->
+        <Label Grid.Row="0" 
+               Text="{Binding TargetMonthName}" 
+               FontSize="Large" 
+               FontAttributes="Bold" 
+               HorizontalOptions="Center" />
+
+        <!-- Row 1: The CollectionView is bound to the remaining space (*), enabling smooth scrolling -->
+        <CollectionView Grid.Row="1" 
+                        ItemsSource="{Binding MonthlyExpenses}" 
+                        SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:Expense">
+                    <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                            <!-- Merchant Name Entry -->
+                            <Label Text="{Binding Merchant}" FontAttributes="Bold" VerticalOptions="Center" />
+
+                            <!-- Date Stamp String -->
+                            <Label Text="{Binding Date, StringFormat='{0:dd-MMM-yyyy}'}" Grid.Row="1" FontSize="Caption" TextColor="LightGray" />
+
+                            <!-- Signed Currency Amount Block -->
+                            <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}" Grid.Column="1" Grid.RowSpan="2" VerticalOptions="Center" FontAttributes="Bold" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

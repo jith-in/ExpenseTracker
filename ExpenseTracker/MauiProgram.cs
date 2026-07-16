@@ -45,6 +45,10 @@ namespace ExpenseTracker
             builder.Services.AddTransient<CategoryDetailsViewModel>();
             builder.Services.AddTransient<ResetPage>();
             builder.Services.AddTransient<ResetViewModel>();
+            builder.Services.AddTransient<Views.MonthlyDetailsPage>();
+            builder.Services.AddTransient<ViewModels.MonthlyDetailsViewModel>();
+            builder.Services.AddTransient<Views.PaymentMethodDetailsPage>();
+            builder.Services.AddTransient<ViewModels.PaymentMethodDetailsViewModel>();
 #if DEBUG
             builder.Logging.AddDebug();
 #endif

@@ -27,5 +27,6 @@ namespace ExpenseTracker.Repositories
     
         Task<List<Expense>> GetExpensesByCategoryAsync(string categoryName);
         Task ClearAllDataAsync();
+        Task BulkLogTransactionsAsync(List<Expense> expenses, List<ImportedTransaction> transactions);
     }
 }

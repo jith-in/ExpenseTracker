@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
+             xmlns:models="clr-namespace:ExpenseTracker.Models"
+             x:Class="ExpenseTracker.Views.PaymentMethodDetailsPage"
+             x:DataType="vm:PaymentMethodDetailsViewModel"
+             Title="Payment Method Details">
+
+    <!-- Grid constraints force the viewport container to stay within visible device limits -->
+    <Grid RowDefinitions="Auto,*" Padding="20" RowSpacing="15">
+
+        <!-- Row 0: Header Component -->
+        <Label Grid.Row="0" 
+               Text="{Binding TargetMethodName}" 
+               FontSize="Large" 
+               FontAttributes="Bold" 
+               HorizontalOptions="Center" />
+
+        <!-- Row 1: CollectionView stays bounded, allowing native scrolling physics to activate -->
+        <CollectionView Grid.Row="1" 
+                        ItemsSource="{Binding MethodExpenses}" 
+                        SelectionMode="None">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:Expense">
+                    <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                            <!-- Merchant Title -->
+                            <Label Text="{Binding Merchant}" FontAttributes="Bold" VerticalOptions="Center" />
+
+                            <!-- Date Timestamp -->
+                            <Label Text="{Binding Date, StringFormat='{0:dd-MMM-yyyy}'}" Grid.Row="1" FontSize="Caption" TextColor="LightGray" />
+
+                            <!-- Formatted Amount -->
+                            <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}" Grid.Column="1" Grid.RowSpan="2" VerticalOptions="Center" FontAttributes="Bold" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

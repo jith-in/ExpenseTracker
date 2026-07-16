@@ -112,5 +112,9 @@ namespace ExpenseTracker.Repositories
         {
             await _database.ClearAllDataAsync();
         }
+        public async Task BulkLogTransactionsAsync(List<Expense> expenses, List<ImportedTransaction> transactions)
+        {
+            await _database.BulkLogTransactionsAsync(expenses, transactions);
+        }
     }
 }
