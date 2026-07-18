@@ -3,10 +3,11 @@ using CommunityToolkit.Mvvm.Input;
 using ExpenseTracker.Interfaces;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories;
-using System.Collections.ObjectModel;
+using ExpenseTracker.Services;
 using Microsoft.Maui.Controls;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,20 +19,23 @@ namespace ExpenseTracker.ViewModels
         private readonly ISmsReaderService _smsReaderService;
         private readonly ISmsImportService _smsImportService;
         private readonly IExpenseRepository _repository;
+        private readonly IAiService _aiService;
 
         // ==========================================
-        // Observable Private Fields
-        // (The source generator uses these to create the upper-case public properties)
+        // Observable Properties
         // ==========================================
 
         [ObservableProperty]
-        private ObservableCollection<ImportedTransaction> importedTransactions = new();
+        private ObservableCollection<TransactionGroup> groupedTransactions = new(); // 🎯 Unified Grouped Collection Source
 
         [ObservableProperty]
         private bool isRefreshing;
 
         [ObservableProperty]
         private string statusMessage = string.Empty;
+
+        [ObservableProperty]
+        private bool isAiAnalyzing;
 
         // ==========================================
         // Constructor
@@ -40,11 +44,13 @@ namespace ExpenseTracker.ViewModels
         public NewTransactionsViewModel(
             ISmsReaderService smsReaderService,
             ISmsImportService smsImportService,
-            IExpenseRepository repository)
+            IExpenseRepository repository,
+            IAiService aiService)
         {
             _smsReaderService = smsReaderService;
             _smsImportService = smsImportService;
             _repository = repository;
+            _aiService = aiService;
             Title = "New Transactions";
         }
 
@@ -63,6 +69,7 @@ namespace ExpenseTracker.ViewModels
 
             try
             {
+                // 🔐 Security check handles permission requests on the Main Thread safely
                 if (!await _smsReaderService.CheckSmsPermissionAsync())
                 {
                     var requestResult = await _smsReaderService.RequestSmsPermissionAsync();
@@ -73,39 +80,108 @@ namespace ExpenseTracker.ViewModels
                     }
                 }
 
-                var smsBodies = await _smsReaderService.GetRecentSmsBodiesAsync();
-                await _smsImportService.ParseIncomingMessagesAsync(smsBodies);
-
-                var allImportedTransactions = await _repository.GetImportedTransactionsAsync();
-
-                if (allImportedTransactions.Any())
+                // 🚀 STEP 1: Offload heavy SMS loading, Regex parsing, and DB reads entirely to a background thread
+                var processedData = await Task.Run(async () =>
                 {
-                    var minDate = allImportedTransactions.Min(t => t.TransactionDate ?? t.SmsReceivedDate);
-                    var maxDate = allImportedTransactions.Max(t => t.TransactionDate ?? t.SmsReceivedDate);
-                    Debug.WriteLine($"Debug: Oldest: {minDate:yyyy-MM-dd}, Newest: {maxDate:yyyy-MM-dd}");
+                    var smsBodies = await _smsReaderService.GetRecentSmsBodiesAsync();
+                    await _smsImportService.ParseIncomingMessagesAsync(smsBodies);
+
+                    var allImportedTransactions = await _repository.GetImportedTransactionsAsync();
+
+                    DateTime today = DateTime.Today;
+                    DateTime startDate = today.Day < 20
+                        ? new DateTime(today.Year, today.Month, 20).AddMonths(-1)
+                        : new DateTime(today.Year, today.Month, 20);
+                    DateTime endDate = startDate.AddMonths(1);
+
+                    var unprocessedBacklog = allImportedTransactions
+                        .Where(t => !t.IsProcessed && (t.TransactionDate ?? t.SmsReceivedDate) >= startDate && (t.TransactionDate ?? t.SmsReceivedDate) < endDate)
+                        .ToList();
+
+                    // Filter out Track 2 (AI Staging) entries that need immediate Gemini parsing
+                    var rawAiStagingItems = unprocessedBacklog
+                        .Where(t => t.SuggestedCategory == "Pending AI Analysis")
+                        .ToList();
+
+                    return new { unprocessedBacklog, rawAiStagingItems };
+                });
+
+                // 🚀 STEP 2: Handle live Gemini analysis if any pending items exist
+                if (processedData.rawAiStagingItems.Any() && Connectivity.Current.NetworkAccess == Microsoft.Maui.Networking.NetworkAccess.Internet)
+                {
+                    StatusMessage = "Gemini is analyzing unknown text structures...";
+                    IsAiAnalyzing = true;
+
+                    try
+                    {
+                        var currentBatchSlices = processedData.rawAiStagingItems.Select(r => new Expense { Id = r.Id, Note = r.SmsContent }).ToList();
+                        var aiResponse = await _aiService.ParseBatchAsync(currentBatchSlices);
+
+                        if (aiResponse?.ProcessedTransactions != null)
+                        {
+                            // Offload database save execution to background thread pool
+                            await Task.Run(async () =>
+                            {
+                                foreach (var aiItem in aiResponse.ProcessedTransactions)
+                                {
+                                    var localMatch = processedData.rawAiStagingItems.FirstOrDefault(x => x.Id == aiItem.Id);
+                                    if (localMatch != null)
+                                    {
+                                        localMatch.Amount = aiItem.Amount;
+                                        localMatch.Merchant = aiItem.Note;
+                                        localMatch.SuggestedCategory = aiItem.Category;
+                                        localMatch.TransactionType = aiItem.TransactionType;
+                                        localMatch.SuggestedPaymentMethod = "AI_STAGED"; // Fast classification tag flag
+
+                                        await _repository.SaveImportedTransactionAsync(localMatch);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    finally
+                    {
+                        IsAiAnalyzing = false;
+                    }
                 }
 
-                DateTime today = DateTime.Today;
-                DateTime startDate = today.Day < 20
-                    ? new DateTime(today.Year, today.Month, 20).AddMonths(-1)
-                    : new DateTime(today.Year, today.Month, 20);
+                // 🚀 STEP 3: Sort and partition the finalized entries into Section Groups on a background thread
+                var structuralGroups = await Task.Run(() =>
+                {
+                    var standardItems = processedData.unprocessedBacklog
+                        .Where(t => t.SuggestedCategory != "Pending AI Analysis" && t.SuggestedPaymentMethod != "AI_STAGED")
+                        .OrderBy(t => t.TransactionDate ?? t.SmsReceivedDate)
+                        .ToList();
 
-                DateTime endDate = startDate.AddMonths(1);
+                    var finalizedAiItems = processedData.unprocessedBacklog
+                        .Where(t => t.SuggestedCategory == "Pending AI Analysis" || t.SuggestedPaymentMethod == "AI_STAGED")
+                        .OrderBy(t => t.SmsReceivedDate)
+                        .ToList();
 
-                var unprocessed = allImportedTransactions
-                    .Where(t => !t.IsProcessed && (t.TransactionDate ?? t.SmsReceivedDate) >= startDate && (t.TransactionDate ?? t.SmsReceivedDate) < endDate)
-                    .OrderBy(t => t.TransactionDate ?? t.SmsReceivedDate)
-                    .ToList();
+                    var groupsList = new List<TransactionGroup>();
 
-                ImportedTransactions = new ObservableCollection<ImportedTransaction>(unprocessed);
+                    if (standardItems.Any())
+                        groupsList.Add(new TransactionGroup("Parsed Transactions", "Green", standardItems));
+
+                    if (finalizedAiItems.Any())
+                        groupsList.Add(new TransactionGroup("AI Generated Transactions (Review Required)", "#6C3483", finalizedAiItems));
+
+                    return groupsList;
+                });
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    GroupedTransactions = new ObservableCollection<TransactionGroup>(structuralGroups);
+                });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading transactions: {ex}");
-                StatusMessage = "Failed to load new transactions.";
+                Debug.WriteLine($"Error dividing pipeline structures: {ex}");
+                StatusMessage = "Failed to synchronize staging logs.";
             }
             finally
             {
+                StatusMessage = string.Empty;
                 IsBusy = false;
                 IsRefreshing = false;
             }
@@ -145,7 +221,6 @@ namespace ExpenseTracker.ViewModels
             IsBusy = true;
             try
             {
-                // Assign correct mathematical sign depending on internal metadata flags
                 decimal adjustedAmount = string.Equals(transaction.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase)
                     ? -Math.Abs(transaction.Amount)
                     : Math.Abs(transaction.Amount);
@@ -160,14 +235,14 @@ namespace ExpenseTracker.ViewModels
                     Date = transaction.TransactionDate ?? transaction.SmsReceivedDate,
                     Note = transaction.SmsContent,
                     IsImported = true,
-                    PaymentMethod = string.IsNullOrWhiteSpace(transaction.SuggestedPaymentMethod)
+                    PaymentMethod = (string.IsNullOrWhiteSpace(transaction.SuggestedPaymentMethod) || transaction.SuggestedPaymentMethod == "AI_STAGED")
                         ? "Net Banking"
                         : transaction.SuggestedPaymentMethod
                 };
 
                 await _repository.SaveExpenseAsync(expense);
 
-                if (!string.IsNullOrWhiteSpace(transaction.SuggestedCategory))
+                if (!string.IsNullOrWhiteSpace(transaction.SuggestedCategory) && transaction.Merchant != "Unparsed Financial SMS")
                 {
                     await _repository.SaveMerchantCategoryMappingAsync(new MerchantCategoryMapping
                     {
@@ -178,71 +253,9 @@ namespace ExpenseTracker.ViewModels
 
                 transaction.IsProcessed = true;
                 await _repository.SaveImportedTransactionAsync(transaction);
-                ImportedTransactions.Remove(transaction);
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
 
-        [RelayCommand]
-        public async Task LogAllTransactionsAsync()
-        {
-            if (IsBusy || ImportedTransactions == null || !ImportedTransactions.Any())
-                return;
-
-            bool isConfirmed = await Shell.Current.DisplayAlert(
-                "Log All Transactions",
-                $"Are you sure you want to approve and log all {ImportedTransactions.Count} new transactions?",
-                "Log All",
-                "Cancel");
-
-            if (!isConfirmed) return;
-
-            IsBusy = true;
-            try
-            {
-                var expensesToInsert = new List<Expense>();
-                var transactionsToUpdate = new List<ImportedTransaction>();
-
-                foreach (var trans in ImportedTransactions.ToList())
-                {
-                    // Enforce mathematical signs to differentiate debits vs credits
-                    decimal adjustedAmount = string.Equals(trans.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase)
-                        ? -Math.Abs(trans.Amount)
-                        : Math.Abs(trans.Amount);
-
-                    expensesToInsert.Add(new Expense
-                    {
-                        Amount = adjustedAmount,
-                        Category = trans.SuggestedCategory ?? "Others",
-                        Date = trans.TransactionDate ?? trans.SmsReceivedDate,
-                        Merchant = trans.Merchant,
-                        TransactionType = trans.TransactionType,
-                        ReferenceNumber = trans.ReferenceNumber,
-                        Note = trans.SmsContent,
-                        IsImported = true,
-                        PaymentMethod = string.IsNullOrWhiteSpace(trans.SuggestedPaymentMethod)
-                            ? "Net Banking"
-                            : trans.SuggestedPaymentMethod
-                    });
-
-                    trans.IsProcessed = true;
-                    transactionsToUpdate.Add(trans);
-                }
-
-                // Call the repository batch execution pipeline method
-                await _repository.BulkLogTransactionsAsync(expensesToInsert, transactionsToUpdate);
-
-                ImportedTransactions.Clear();
-
-                await Shell.Current.DisplayAlert("Success", "All new transactions have been integrated successfully.", "OK");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error during transaction bulk upload execution: {ex}");
-                await Shell.Current.DisplayAlert("Import Error", "Failed to batch process transaction imports.", "OK");
+                // Clean item from virtualized group
+                RemoveTransactionFromUI(transaction);
             }
             finally
             {
@@ -256,8 +269,25 @@ namespace ExpenseTracker.ViewModels
             if (transaction == null) return;
             transaction.IsProcessed = true;
             await _repository.SaveImportedTransactionAsync(transaction);
-            ImportedTransactions.Remove(transaction);
+            RemoveTransactionFromUI(transaction);
+        }
+
+        private void RemoveTransactionFromUI(ImportedTransaction targetItem)
+        {
+            foreach (var group in GroupedTransactions.ToList())
+            {
+                if (group.Contains(targetItem))
+                {
+                    group.Remove(targetItem);
+
+                    // If a section category drops to zero records, remove the header panel completely
+                    if (!group.Any())
+                    {
+                        GroupedTransactions.Remove(group);
+                    }
+                    break;
+                }
+            }
         }
     }
 }
-

@@ -1,5 +1,7 @@
 using ExpenseTracker.ViewModels;
+using System;
 using System.Diagnostics;
+using Microsoft.Maui.Controls;
 
 namespace ExpenseTracker.Views
 {
@@ -34,7 +36,11 @@ namespace ExpenseTracker.Views
             base.OnAppearing();
             try
             {
-                await ((DashboardViewModel)BindingContext).LoadDashboardAsync();
+                
+                if (BindingContext is DashboardViewModel vm)
+                {
+                    await vm.LoadDashboardAsync();
+                }
             }
             catch (Exception ex)
             {

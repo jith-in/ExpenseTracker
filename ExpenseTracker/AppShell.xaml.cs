@@ -18,6 +18,7 @@ namespace ExpenseTracker
                 Routing.RegisterRoute(nameof(ResetPage), typeof(ResetPage));
                 Routing.RegisterRoute(nameof(Views.MonthlyDetailsPage), typeof(Views.MonthlyDetailsPage));
                 Routing.RegisterRoute(nameof(Views.PaymentMethodDetailsPage), typeof(Views.PaymentMethodDetailsPage));
+                Routing.RegisterRoute("NewTransactionsPage", typeof(Views.NewTransactionsPage));
             }
             catch (Exception ex)
             {

@@ -8,8 +8,8 @@
              x:DataType="vm:NewTransactionsViewModel"
              Title="New Transactions">
 
-    <!-- Changed to a Grid with defined rows to control screen height allocation -->
-    <Grid RowDefinitions="Auto,Auto,Auto,*" 
+    <!-- Root Grid controls global structural heights allocation -->
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" 
           Padding="20" 
           RowSpacing="16">
 
@@ -23,66 +23,128 @@
                TextColor="Red" 
                IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
 
-        <Button Grid.Row="2" 
-                Text="Refresh" 
-                Command="{Binding LoadNewTransactionsCommand}" />
+        <!-- High-Performance Interactive Refresh Border Button (Bypasses Material Components) -->
+        <Border Grid.Row="2"
+                BackgroundColor="{StaticResource Primary}"
+                StrokeShape="RoundRectangle 8"
+                Padding="16,12"
+                HorizontalOptions="Fill">
+            <Border.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding LoadNewTransactionsCommand}" />
+            </Border.GestureRecognizers>
+            <Label Text="Refresh Inbox Messages"
+                   TextColor="White"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center" />
+        </Border>
 
-        <!-- Placed in Row 3 (the star row) which manages constraints and enables scrolling -->
-        <CollectionView Grid.Row="3" 
-                        ItemsSource="{Binding ImportedTransactions}" 
+        <!-- Inline AI Loading Panel isolated cleanly outside the scrolling viewport window -->
+        <HorizontalStackLayout Grid.Row="3" 
+                               Spacing="10" 
+                               Margin="0,4"
+                               IsVisible="{Binding IsAiAnalyzing}">
+            <ActivityIndicator IsRunning="{Binding IsAiAnalyzing}" 
+                               Color="#6C3483" 
+                               HeightRequest="20" 
+                               WidthRequest="20" />
+            <Label Text="Gemini is analyzing unknown text structures..." 
+                   TextColor="#6C3483" 
+                   FontAttributes="Italic" 
+                   FontSize="Small" 
+                   VerticalOptions="Center" />
+        </HorizontalStackLayout>
+
+        <!-- 🎯 VIRTUALIZED GROUPED SCROLL ENGINE LAYER -->
+        <!-- Resolves ANR/Freeze bugs by rendering views ONLY for onscreen nodes -->
+        <CollectionView Grid.Row="4"
+                        ItemsSource="{Binding GroupedTransactions}"
+                        IsGrouped="True"
                         SelectionMode="None">
+
+            <!-- Section Header Layout Generator Template -->
+            <CollectionView.GroupHeaderTemplate>
+                <DataTemplate x:DataType="models:TransactionGroup">
+                    <Label Text="{Binding Title}" 
+                           TextColor="{Binding HeaderColor}"
+                           FontAttributes="Bold" 
+                           FontSize="Medium" 
+                           Margin="0,12,0,8" />
+                </DataTemplate>
+            </CollectionView.GroupHeaderTemplate>
+
+            <!-- Virtualized Row Item Content Block Template -->
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:ImportedTransaction">
-                    <!-- Migrated from obsolete Frame to .NET 9 Border component -->
-                    <Border Background="Green" 
+                    <Border x:Name="CardBorder"
+                            BackgroundColor="Green" 
                             StrokeShape="RoundRectangle 10" 
                             StrokeThickness="0" 
-                            Padding="12" 
-                            Margin="0,0,0,10">
+                            Padding="12"
+                            Margin="0,0,0,12">
 
-                        <VerticalStackLayout Spacing="8">
-                            <Label Text="{Binding Merchant}" FontAttributes="Bold" />
-                            <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}" />
-                            <Label Text="{Binding SuggestedCategory, StringFormat='Suggested: {0}'}" />
+                        <!-- Reactive UI Theming Engine Shifts Layout Context via Properties -->
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding SuggestedPaymentMethod}" Value="AI_STAGED">
+                                <Setter Property="BackgroundColor" Value="#6C3483" />
+                            </DataTrigger>
+                        </Border.Triggers>
 
-                            <!-- ✅ NEW: Date Field -->
-                            <Label Text="{Binding Date, StringFormat='Date: {0:dd MMM yyyy}'}" 
-           FontSize="12" 
-           TextColor="LightYellow" />
+                        <VerticalStackLayout Spacing="6">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0" Text="{Binding Merchant}" FontAttributes="Bold" TextColor="White" FontSize="16" LineBreakMode="TailTruncation" />
+                                <Label Grid.Column="1" Text="{Binding Amount, StringFormat='₹{0:F2}'}" TextColor="White" FontAttributes="Bold" FontSize="16" />
+                            </Grid>
 
-                            <Label Text="{Binding TransactionType}" FontSize="Small" TextColor="AliceBlue" />
-                            <Label Text="{Binding ReferenceNumber}" FontSize="Small" TextColor="AliceBlue" />
-                            <Label Text="{Binding SmsContent}" LineBreakMode="TailTruncation" MaxLines="2" />
+                            <Label Text="{Binding SuggestedCategory, StringFormat='Suggested Category: {0}'}" TextColor="White" FontSize="13" />
 
-                            <Button Text="View Full Message" 
-        FontSize="10"
-        HeightRequest="30"
-        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=ViewFullMessageCommand}" 
-        CommandParameter="{Binding .}"
-        Background="Transparent"  
-        TextColor="Yellow" />
+                            <!-- Safe Date Parsing Field Display Layout -->
+                            <Label Text="{Binding SmsReceivedDate, StringFormat='Received: {0:dd MMM yyyy HH:mm}'}" FontSize="11" TextColor="LightYellow" />
 
-                            <!-- Added x:DataType="{x:Null}" to break strict type safety limitations for parent element lookup -->
-                            <HorizontalStackLayout Spacing="12" x:DataType="{x:Null}">
+                            <Label Text="{Binding SmsContent}" LineBreakMode="WordWrap" TextColor="AliceBlue" FontSize="12" Margin="0,4" />
 
-                                <Button Text="Edit" 
-                                        Command="{Binding BindingContext.EditTransactionCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" 
-                                        CommandParameter="{Binding .}" 
-                                        BackgroundColor="{StaticResource Primary}" 
-                                        TextColor="White" />
+                            <!-- View Full Message link context binding lookup layer -->
+                            <Label Text="View Full Message" 
+                                   TextColor="Yellow"
+                                   FontSize="Small"
+                                   FontAttributes="Bold"
+                                   HorizontalOptions="Start"
+                                   Margin="0,2,0,6"
+                                   TextDecorations="Underline">
+                                <Label.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=ViewFullMessageCommand}" 
+                                                           CommandParameter="{Binding .}" />
+                                </Label.GestureRecognizers>
+                            </Label>
 
-                                <Button Text="Accept" 
-                                        Command="{Binding BindingContext.AcceptTransactionCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" 
-                                        CommandParameter="{Binding .}" 
-                                        BackgroundColor="{StaticResource SecondaryDarkText}" 
-                                        TextColor="White" />
+                            <!-- Interactive Button Stack (Platform Native Styles Excluded) -->
+                            <HorizontalStackLayout Spacing="10">
+                                <!-- 🎨 Custom Edit Button Card Layout -->
+                                <Border BackgroundColor="#2C3E50" StrokeShape="RoundRectangle 4" Padding="16,8" VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=EditTransactionCommand}" 
+                                                               CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Label Text="Edit" TextColor="White" FontSize="12" FontAttributes="Bold" />
+                                </Border>
 
-                                <Button Text="Ignore" 
-                                        Command="{Binding BindingContext.IgnoreTransactionCommand, Source={RelativeSource AncestorType={x:Type ContentPage}}}" 
-                                        CommandParameter="{Binding .}" 
-                                        BackgroundColor="LightGray" 
-                                        TextColor="Black" />
+                                <!-- 🎨 Custom Accept Button Card Layout -->
+                                <Border BackgroundColor="#1E8449" StrokeShape="RoundRectangle 4" Padding="16,8" VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=AcceptTransactionCommand}" 
+                                                               CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Label Text="Accept" TextColor="White" FontSize="12" FontAttributes="Bold" />
+                                </Border>
 
+                                <!-- 🎨 Custom Ignore Button Card Layout -->
+                                <Border BackgroundColor="#7F8C8D" StrokeShape="RoundRectangle 4" Padding="16,8" VerticalOptions="Center">
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=IgnoreTransactionCommand}" 
+                                                               CommandParameter="{Binding .}" />
+                                    </Border.GestureRecognizers>
+                                    <Label Text="Ignore" TextColor="White" FontSize="12" FontAttributes="Bold" />
+                                </Border>
                             </HorizontalStackLayout>
                         </VerticalStackLayout>
                     </Border>

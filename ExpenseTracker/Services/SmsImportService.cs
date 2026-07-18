@@ -79,8 +79,53 @@ namespace ExpenseTracker.Services
             {
                 var parsed = ParseSms(message.Body, message.ReceivedDate);
 
-                if (parsed == null) continue;
+                // 🎯 TARGET CHANGE: Stage unrecognized financial SMS messages instead of pushing directly to finalized expenses
+                if (parsed == null)
+                {
+                    string lowerBody = message.Body.ToLower();
 
+                    // 1. Basic target filter to skip general carrier advertisements, TRAI notices, or personal chats
+                    if (lowerBody.Contains("debited") ||
+                        lowerBody.Contains("credited") ||
+                        lowerBody.Contains("spent") ||
+                        lowerBody.Contains("transaction") ||
+                        lowerBody.Contains("rs ") ||
+                        lowerBody.Contains("inr"))
+                    {
+                        // 2. Prevent creating duplicate records if this text string was already processed in a previous scan
+                        string currentSmsHash = ComputeSha256(Normalize(message.Body));
+                        if (contentLookup.Contains(currentSmsHash)) continue;
+
+                        System.Diagnostics.Debug.WriteLine($"[AI Pipeline Cache] Staging unrecognized transaction template for intermediate review: \"{message.Body}\"");
+
+                        // 3. Construct a raw staging import record with tracking flags
+                        var unparsedImport = new ImportedTransaction
+                        {
+                            Amount = 0,
+                            Merchant = "Unparsed Financial SMS",
+                            SuggestedCategory = "Pending AI Analysis", // 🚩 Our specific structural pipeline marker flag
+                            TransactionType = lowerBody.Contains("credited") ? "Credit" : "Debit",
+                            SmsContent = message.Body,
+                            SmsReceivedDate = message.ReceivedDate,
+                            IsProcessed = false
+                        };
+
+                        // Commit row layout directly to your temporary staging log database table
+                        await _expenseRepository.SaveImportedTransactionAsync(unparsedImport).ConfigureAwait(false);
+
+                        // Update hash lookup map matrices to prevent duplication during the same loop run iteration
+                        contentLookup.Add(currentSmsHash);
+
+                        // Include it in the returned array list to stay consistent with the method execution profile
+                        importedList.Add(unparsedImport);
+                    }
+
+                    continue;
+                }
+
+                // =================================================================
+                // STANDARD PIECE: Processing loop for recognized structured patterns
+                // =================================================================
                 if (!string.IsNullOrWhiteSpace(parsed.ReferenceNumber) && hashLookup.Contains(parsed.ReferenceNumber)) continue;
                 if (contentLookup.Contains(ComputeSha256(parsed.SmsContent))) continue;
 

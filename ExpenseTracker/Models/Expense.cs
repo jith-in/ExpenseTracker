@@ -25,5 +25,7 @@ namespace ExpenseTracker.Models
         public string TransactionType { get; set; } = string.Empty;
 
         public string ReferenceNumber { get; set; } = string.Empty;
+
+        public string ProcessingStatus { get; set; } = "Confirmed";
     }
 }

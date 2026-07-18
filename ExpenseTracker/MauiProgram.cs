@@ -7,7 +7,7 @@ using ExpenseTracker.ViewModels;
 using ExpenseTracker.Views;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-
+using Microsoft.Extensions.DependencyInjection;
 namespace ExpenseTracker
 {
     public static class MauiProgram
@@ -49,6 +49,11 @@ namespace ExpenseTracker
             builder.Services.AddTransient<ViewModels.MonthlyDetailsViewModel>();
             builder.Services.AddTransient<Views.PaymentMethodDetailsPage>();
             builder.Services.AddTransient<ViewModels.PaymentMethodDetailsViewModel>();
+
+            builder.Services.AddSingleton<HttpClient>();
+            builder.Services.AddTransient<IAiService, AiService>();
+            builder.Services.AddSingleton<DashboardViewModel>();
+            builder.Services.AddSingleton<DashboardPage>();
 #if DEBUG
             builder.Logging.AddDebug();
 #endif

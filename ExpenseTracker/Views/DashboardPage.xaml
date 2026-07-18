@@ -7,57 +7,129 @@
              x:DataType="vm:DashboardViewModel"
              Title="Dashboard">
 
+    <!-- The root ScrollView handles all vertical expansion fluidly -->
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
             <Label Text="Dashboard" FontSize="Large" FontAttributes="Bold" />
 
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16" Margin="0,0,10,0">
-                    <VerticalStackLayout>
-                        <Label Text="Today" FontAttributes="Bold" />
-                        <Label Text="{Binding TodayTotal, StringFormat='₹{0:F2}'}" FontSize="24" />
+            <!-- ================= 🎯 NEW: AI RESOLUTION ALERT BANNER ================= -->
+            <!-- Automatically displays when HasPendingAiTransactions evaluates to True -->
+            <Border BackgroundColor="#FFD6D6" 
+                    Stroke="#A93226"
+                    StrokeThickness="1" 
+                    StrokeShape="RoundRectangle 10" 
+                    Padding="14"
+                    IsVisible="{Binding HasPendingAiTransactions}">
+                <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                    <VerticalStackLayout VerticalOptions="Center">
+                        <Label Text="Unrecognized Transactions Detected" 
+                               FontAttributes="Bold" 
+                               TextColor="#8B0000" 
+                               FontSize="Small" />
+                        <Label Text="You have transaction entries waiting for smart AI auto-categorization." 
+                               TextColor="#5A0000" 
+                               FontSize="Caption" 
+                               LineBreakMode="WordWrap" />
                     </VerticalStackLayout>
-                </Frame>
-                <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16">
-                    <VerticalStackLayout>
-                        <Label Text="This Month" FontAttributes="Bold" />
-                        <Label Text="{Binding MonthTotal, StringFormat='₹{0:F2}'}" FontSize="24" />
-                    </VerticalStackLayout>
-                </Frame>
-                <Frame Grid.ColumnSpan="2" BackgroundColor="LightGray" CornerRadius="12" Padding="16">
-                    <VerticalStackLayout>
-                        <Label Text="This Year" FontAttributes="Bold" />
-                        <Label Text="{Binding YearTotal, StringFormat='₹{0:F2}'}" FontSize="24" />
-                    </VerticalStackLayout>
-                </Frame>
-            </Grid>
 
-            <Frame BackgroundColor="LightGray" CornerRadius="12" Padding="16">
+                    <Button Grid.Column="1" 
+                            Text="Resolve Now" 
+                            Command="{Binding ResolvePendingWithAiCommand}"
+                            BackgroundColor="#A93226" 
+                            TextColor="White"
+                            FontSize="Caption"
+                            FontAttributes="Bold"
+                            HeightRequest="36"
+                            Padding="12,0"
+                            VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <!-- ================= DYNAMIC METRICS SUMMARY PANELS ================= -->
+
+            <!-- This Month Card Layout (Flattened Grid to fix Android measurement caching) -->
+            <Border BackgroundColor="LightGray" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="16">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="2">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleMonthBreakdownCommand}" />
+                    </Grid.GestureRecognizers>
+
+                    <Label Grid.Row="0" Text="This Month" FontAttributes="Bold" TextColor="Black" />
+                    <Label Grid.Row="1" Text="{Binding MonthTotal, StringFormat='₹{0:F2}'}" FontSize="24" TextColor="Black" />
+                    <Label Grid.Row="2" Text="Click to view credit/debit details" FontSize="Caption" TextColor="DimGray" Margin="0,2,0,0" />
+
+                    <!-- Dynamic Separator Line -->
+                    <Line Grid.Row="3" Stroke="Gray" StrokeThickness="0.5" Margin="0,10" IsVisible="{Binding IsMonthBreakdownVisible}" />
+
+                    <!-- Collapsible Monthly Split Detail Grid Matrix -->
+                    <Grid Grid.Row="4" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="6" IsVisible="{Binding IsMonthBreakdownVisible}">
+                        <Label Grid.Row="0" Grid.Column="0" Text="Income (Credits)" TextColor="Green" FontSize="Small" FontAttributes="Bold" />
+                        <Label Grid.Row="0" Grid.Column="1" Text="{Binding ThisMonthCredit, StringFormat='₹{0:F2}'}" TextColor="Green" FontSize="Small" FontAttributes="Bold" />
+
+                        <Label Grid.Row="1" Grid.Column="0" Text="Expenses (Debits)" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding ThisMonthDebit, StringFormat='₹{0:F2}'}" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- This Year Card Layout (Flattened Grid to fix Android measurement caching) -->
+            <Border BackgroundColor="LightGray" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="16">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="2">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleYearBreakdownCommand}" />
+                    </Grid.GestureRecognizers>
+
+                    <Label Grid.Row="0" Text="This Year" FontAttributes="Bold" TextColor="Black" />
+                    <Label Grid.Row="1" Text="{Binding YearTotal, StringFormat='₹{0:F2}'}" FontSize="24" TextColor="Black" />
+                    <Label Grid.Row="2" Text="Click to view credit/debit details" FontSize="Caption" TextColor="DimGray" Margin="0,2,0,0" />
+
+                    <!-- Dynamic Separator Line -->
+                    <Line Grid.Row="3" Stroke="Gray" StrokeThickness="0.5" Margin="0,10" IsVisible="{Binding IsYearBreakdownVisible}" />
+
+                    <!-- Collapsible Yearly Split Detail Grid Matrix -->
+                    <Grid Grid.Row="4" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="6" IsVisible="{Binding IsYearBreakdownVisible}">
+                        <Label Grid.Row="0" Grid.Column="0" Text="Income (Credits)" TextColor="Green" FontSize="Small" FontAttributes="Bold" />
+                        <Label Grid.Row="0" Grid.Column="1" Text="{Binding ThisYearCredit, StringFormat='₹{0:F2}'}" TextColor="Green" FontSize="Small" FontAttributes="Bold" />
+
+                        <Label Grid.Row="1" Grid.Column="0" Text="Expenses (Debits)" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
+                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding ThisYearDebit, StringFormat='₹{0:F2}'}" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Pending SMS Notification Tile -->
+            <!-- 🎯 CHANGE: Attached a TapGestureRecognizer directly to this card container -->
+            <Border BackgroundColor="LightGray" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="16">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding NavigateToNewTransactionsCommand}" />
+                </Border.GestureRecognizers>
                 <VerticalStackLayout>
-                    <Label Text="Pending Imported SMS" FontAttributes="Bold" />
-                    <Label Text="{Binding PendingImports}" FontSize="24" />
+                    <Label Text="Pending Imported SMS" FontAttributes="Bold" TextColor="Black" />
+                    <Label Text="{Binding PendingImports}" FontSize="24" TextColor="Black" />
                 </VerticalStackLayout>
-            </Frame>
+            </Border>
 
+            <!-- ================= TOP CATEGORIES BREAKDOWN ================= -->
             <Label Text="Top Categories" FontAttributes="Bold" />
-            <CollectionView ItemsSource="{Binding TopCategories}">
-                <CollectionView.ItemTemplate>
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding TopCategories}">
+                <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="vm:CategorySummary">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Border BackgroundColor="Grey" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding Category}" />
-                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" />
+                                <Label Text="{Binding Category}" VerticalOptions="Center" />
+                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" />
                             </Grid>
-                        </Frame>
+                        </Border>
                     </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
 
+            <!-- ================= RECENT ACTIVITY HISTORY ================= -->
             <Label Text="Recent Expenses" FontAttributes="Bold" />
-            <CollectionView ItemsSource="{Binding RecentExpenses}">
-                <CollectionView.ItemTemplate>
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding RecentExpenses}">
+                <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="models:Expense">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Border BackgroundColor="Grey" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto">
                                 <VerticalStackLayout>
                                     <Label Text="{Binding Category}" FontAttributes="Bold" />
@@ -65,10 +137,11 @@
                                 </VerticalStackLayout>
                                 <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" />
                             </Grid>
-                        </Frame>
+                        </Border>
                     </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
