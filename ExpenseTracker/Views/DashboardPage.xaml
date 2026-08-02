@@ -12,8 +12,7 @@
         <VerticalStackLayout Padding="20" Spacing="20">
             <Label Text="Dashboard" FontSize="Large" FontAttributes="Bold" />
 
-            <!-- ================= 🎯 NEW: AI RESOLUTION ALERT BANNER ================= -->
-            <!-- Automatically displays when HasPendingAiTransactions evaluates to True -->
+            <!-- ================= AI RESOLUTION ALERT BANNER ================= -->
             <Border BackgroundColor="#FFD6D6" 
                     Stroke="#A93226"
                     StrokeThickness="1" 
@@ -45,9 +44,41 @@
                 </Grid>
             </Border>
 
+            <!-- ================= 🎯 NEW: REMAINING BUDGET TILE ================= -->
+            <Border BackgroundColor="LightGray" 
+                    StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 12" 
+                    Padding="16"
+                    IsVisible="{Binding HasBudgetSet}">
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="4">
+                    <Label Grid.Row="0" Grid.Column="0" 
+                           Text="Available to Spend" 
+                           FontAttributes="Bold" 
+                           TextColor="Black" />
+
+                    <Label Grid.Row="0" Grid.Column="1" 
+                           Text="{Binding MonthlyBudget, StringFormat='Budget: ₹{0:N0}'}" 
+                           FontSize="Small" 
+                           TextColor="DimGray" 
+                           VerticalOptions="Center" />
+
+                    <Label Grid.Row="1" Grid.Column="0" 
+                           Text="{Binding RemainingBudget, StringFormat='₹{0:N2}'}" 
+                           FontSize="24" 
+                           FontAttributes="Bold" 
+                           TextColor="Black" />
+
+                    <Label Grid.Row="1" Grid.Column="1" 
+                           Text="Remaining Balance" 
+                           FontSize="Caption" 
+                           TextColor="DimGray" 
+                           VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
             <!-- ================= DYNAMIC METRICS SUMMARY PANELS ================= -->
 
-            <!-- This Month Card Layout (Flattened Grid to fix Android measurement caching) -->
+            <!-- This Month Card Layout -->
             <Border BackgroundColor="LightGray" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="16">
                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="2">
                     <Grid.GestureRecognizers>
@@ -72,7 +103,7 @@
                 </Grid>
             </Border>
 
-            <!-- This Year Card Layout (Flattened Grid to fix Android measurement caching) -->
+            <!-- This Year Card Layout -->
             <Border BackgroundColor="LightGray" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="16">
                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="2">
                     <Grid.GestureRecognizers>
@@ -98,7 +129,6 @@
             </Border>
 
             <!-- Pending SMS Notification Tile -->
-            <!-- 🎯 CHANGE: Attached a TapGestureRecognizer directly to this card container -->
             <Border BackgroundColor="LightGray" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="16">
                 <Border.GestureRecognizers>
                     <TapGestureRecognizer Command="{Binding NavigateToNewTransactionsCommand}" />

@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories;
@@ -24,6 +24,13 @@ namespace ExpenseTracker.ViewModels
 
         [ObservableProperty]
         private ObservableCollection<PaymentMethod> paymentMethods = new();
+
+        // 🎯 1. Added Transaction Types Collection & Selected State
+        [ObservableProperty]
+        private ObservableCollection<string> transactionTypes = new() { "Debit", "Credit" };
+
+        [ObservableProperty]
+        private string selectedTransactionType = "Debit";
 
         [ObservableProperty]
         private Category? selectedCategory;
@@ -68,6 +75,11 @@ namespace ExpenseTracker.ViewModels
                 }
 
                 AmountText = _currentExpense.Amount.ToString("F2");
+
+                // 🎯 2. Bind current expense transaction type (defaults to Debit if blank)
+                SelectedTransactionType = TransactionTypes.FirstOrDefault(t =>
+                    string.Equals(t, _currentExpense.TransactionType, StringComparison.OrdinalIgnoreCase)) ?? "Debit";
+
                 SelectedCategory = Categories.FirstOrDefault(c => c.Name == _currentExpense.Category) ?? Categories.FirstOrDefault();
                 SelectedPaymentMethod = PaymentMethods.FirstOrDefault(p => p.Name == _currentExpense.PaymentMethod) ?? PaymentMethods.FirstOrDefault();
                 Date = _currentExpense.Date;
@@ -150,6 +162,7 @@ namespace ExpenseTracker.ViewModels
             try
             {
                 _currentExpense.Amount = amount;
+                _currentExpense.TransactionType = SelectedTransactionType; // 🎯 3. Save updated Credit/Debit state
                 _currentExpense.Category = SelectedCategory.Name;
                 _currentExpense.PaymentMethod = SelectedPaymentMethod.Name;
                 _currentExpense.Date = Date;

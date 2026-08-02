@@ -154,7 +154,7 @@ namespace ExpenseTracker.ViewModels
                     }
                     finally
                     {
-                       // LogSmsToVisualStudioConsole(processedData.unprocessedBacklog);
+                        LogSmsToVisualStudioConsole(processedData.unprocessedBacklog);
                         IsAiAnalyzing = false;
                     }
                 }
@@ -234,8 +234,13 @@ namespace ExpenseTracker.ViewModels
                 return "Credit";
             }
 
-            // 🎯 3. ICICI Outbound UPI Fix (Catch "debited for ... credited" pattern before generic credit checks)
-            if (text.Contains("debited for") || text.Contains("debited rs") || (text.Contains("acc xx") && text.Contains("debited")))
+            // 🎯 3. Explicit Outbound Bank Debit Fixes (Catches Loan Interest, Transfers, and UPI debits reliably)
+            if (text.Contains("debited for") ||
+                text.Contains("debited rs") ||
+                text.Contains("debited with") ||
+                text.Contains("debited by interest") ||
+                text.Contains("debited inr") ||
+                (text.Contains("acc xx") && text.Contains("debited")))
             {
                 return "Debit";
             }

@@ -14,7 +14,7 @@ namespace ExpenseTracker.ViewModels
     public partial class AddExpenseViewModel : BaseViewModel, IQueryAttributable
     {
         private readonly IExpenseRepository _repository;
-        private readonly IBudgetAlertService _budgetAlertService; // 🎯 1. Added Budget Service Reference
+        private readonly IBudgetAlertService _budgetAlertService;
         private string _amountText = string.Empty;
         private ObservableCollection<Category> _categories = new();
         private ObservableCollection<PaymentMethod> _paymentMethods = new();
@@ -28,12 +28,12 @@ namespace ExpenseTracker.ViewModels
         private DateTime _date = DateTime.Today;
         private string _note = string.Empty;
         private string _statusMessage = string.Empty;
+        private int _editingExpenseId = 0; // 🎯 Tracks editing state for existing expenses
         private int _pendingImportId;
         private string _pendingCategoryName = string.Empty;
         private string _pendingMerchantName = string.Empty;
         private string _pendingTransactionType = string.Empty;
 
-        // 🎯 2. Injected IBudgetAlertService into constructor
         public AddExpenseViewModel(IExpenseRepository repository, IBudgetAlertService budgetAlertService)
         {
             _repository = repository;
@@ -122,10 +122,10 @@ namespace ExpenseTracker.ViewModels
 
                 if (!string.IsNullOrWhiteSpace(_pendingCategoryName))
                 {
-                    SelectedCategory = Categories.FirstOrDefault(c => c.Name == _pendingCategoryName) ?? Categories.FirstOrDefault();
+                    SelectedCategory = Categories.FirstOrDefault(c => string.Equals(c.Name, _pendingCategoryName, StringComparison.OrdinalIgnoreCase)) ?? Categories.FirstOrDefault();
                     _pendingCategoryName = string.Empty;
                 }
-                else
+                else if (SelectedCategory == null)
                 {
                     SelectedCategory = Categories.FirstOrDefault();
                 }
@@ -141,7 +141,10 @@ namespace ExpenseTracker.ViewModels
                     _pendingTransactionType = string.Empty;
                 }
 
-                SelectedPaymentMethod = PaymentMethods.FirstOrDefault(p => p.Name == "UPI") ?? PaymentMethods.FirstOrDefault();
+                if (SelectedPaymentMethod == null)
+                {
+                    SelectedPaymentMethod = PaymentMethods.FirstOrDefault(p => p.Name == "UPI") ?? PaymentMethods.FirstOrDefault();
+                }
             }
             finally
             {
@@ -151,6 +154,11 @@ namespace ExpenseTracker.ViewModels
 
         public void ApplyQueryAttributes(IDictionary<string, object> query)
         {
+            if (query.TryGetValue("expenseId", out var idObj) && int.TryParse(idObj.ToString(), out var expId))
+            {
+                _editingExpenseId = expId;
+            }
+
             if (query.TryGetValue("amount", out var amount))
             {
                 AmountText = amount.ToString() ?? string.Empty;
@@ -175,12 +183,18 @@ namespace ExpenseTracker.ViewModels
             if (query.TryGetValue("type", out var type) || query.TryGetValue("transactionType", out type))
             {
                 _pendingTransactionType = type?.ToString() ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(_pendingTransactionType))
+                {
+                    SelectedTransactionType = TransactionTypes.FirstOrDefault(t => string.Equals(t, _pendingTransactionType, StringComparison.OrdinalIgnoreCase)) ?? "Debit";
+                }
             }
 
             if (query.TryGetValue("importId", out var importId) && int.TryParse(importId.ToString(), out var id))
             {
                 _pendingImportId = id;
             }
+
+            _ = LoadOptionsAsync();
         }
 
         private async Task SaveExpenseAsync()
@@ -211,6 +225,7 @@ namespace ExpenseTracker.ViewModels
             {
                 var expense = new Expense
                 {
+                    Id = _editingExpenseId, // Overwrites existing row if editing, or creates new if 0
                     Amount = Math.Abs(amount),
                     Category = SelectedCategory.Name,
                     PaymentMethod = SelectedPaymentMethod.Name,
@@ -238,9 +253,9 @@ namespace ExpenseTracker.ViewModels
                     }
                 }
 
-                StatusMessage = "Expense saved successfully.";
+                StatusMessage = "Transaction saved successfully.";
 
-                // 🎯 3. Check and display budget alert if threshold or limit is reached
+                // Check and display budget alert if threshold or limit is reached
                 await _budgetAlertService.CheckAndShowBudgetAlertAsync();
 
                 if (_pendingImportId > 0)
@@ -249,13 +264,7 @@ namespace ExpenseTracker.ViewModels
                 }
                 else
                 {
-                    AmountText = string.Empty;
-                    Note = string.Empty;
-                    Date = DateTime.Today;
-                    SelectedTransactionType = "Debit";
-                    SelectedCategory = Categories.FirstOrDefault();
-                    SelectedPaymentMethod = PaymentMethods.FirstOrDefault();
-                    _pendingImportId = 0;
+                    await Shell.Current.GoToAsync("..");
                 }
             }
             finally

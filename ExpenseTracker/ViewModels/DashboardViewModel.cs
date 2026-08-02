@@ -35,6 +35,11 @@ namespace ExpenseTracker.ViewModels
         private bool _isYearBreakdownVisible;
         private bool _hasPendingAiTransactions;
 
+        // Backing Fields for Dynamic Budget Tile
+        private decimal _monthlyBudget;
+        private decimal _remainingBudget;
+        private bool _hasBudgetSet;
+
         public DashboardViewModel(IExpenseRepository repository, IAiService aiService)
         {
             Debug.WriteLine("Startup: DashboardViewModel ctor begin");
@@ -109,6 +114,26 @@ namespace ExpenseTracker.ViewModels
             set => SetProperty(ref _thisYearDebit, value);
         }
 
+        // ================= BUDGET METRIC PROPERTIES =================
+
+        public decimal MonthlyBudget
+        {
+            get => _monthlyBudget;
+            set => SetProperty(ref _monthlyBudget, value);
+        }
+
+        public decimal RemainingBudget
+        {
+            get => _remainingBudget;
+            set => SetProperty(ref _remainingBudget, value);
+        }
+
+        public bool HasBudgetSet
+        {
+            get => _hasBudgetSet;
+            set => SetProperty(ref _hasBudgetSet, value);
+        }
+
         // ================= INTERACTIVE VISIBILITY FLAGS =================
 
         public bool IsMonthBreakdownVisible
@@ -159,7 +184,7 @@ namespace ExpenseTracker.ViewModels
             {
                 var expenses = await _repository.GetExpensesAsync();
                 var imported = await _repository.GetImportedTransactionsAsync();
-                var now = DateTime.UtcNow;
+                var now = DateTime.Today;
 
                 // 1. Calculate Today's Pure Volume using absolute metrics
                 TodayTotal = expenses.Where(x => x.Date.Date == now.Date).Sum(x => Math.Abs(x.Amount));
@@ -167,7 +192,6 @@ namespace ExpenseTracker.ViewModels
                 // 2. Aggregate and segment "This Year" Data Rows safely
                 var yearTransactions = expenses.Where(x => x.Date.Year == now.Year).ToList();
 
-                // 🟢 FIXED: Check TransactionType instead of hardcoded Category strings
                 ThisYearCredit = yearTransactions
                     .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
                     .Sum(x => Math.Abs(x.Amount));
@@ -177,12 +201,19 @@ namespace ExpenseTracker.ViewModels
                              || string.IsNullOrWhiteSpace(x.TransactionType))
                     .Sum(x => Math.Abs(x.Amount));
 
-                YearTotal = ThisYearCredit - ThisYearDebit; // Yields clean net balance
+                YearTotal = ThisYearCredit - ThisYearDebit; // Clean net balance
 
-                // 3. Aggregate and segment "This Month" Data Rows safely
-                var monthTransactions = yearTransactions.Where(x => x.Date.Month == now.Month).ToList();
+                // 🎯 3. Calculate rolling monthly statement period (20th to 20th window)
+                DateTime monthStartDate = now.Day < 20
+                    ? new DateTime(now.Year, now.Month, 20).AddMonths(-1)
+                    : new DateTime(now.Year, now.Month, 20);
+                DateTime monthEndDate = monthStartDate.AddMonths(1);
 
-                // 🟢 FIXED: Check TransactionType instead of hardcoded Category strings
+                // Filter transactions falling inside the active statement cycle
+                var monthTransactions = expenses
+                    .Where(x => x.Date >= monthStartDate && x.Date < monthEndDate)
+                    .ToList();
+
                 ThisMonthCredit = monthTransactions
                     .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
                     .Sum(x => Math.Abs(x.Amount));
@@ -192,7 +223,20 @@ namespace ExpenseTracker.ViewModels
                              || string.IsNullOrWhiteSpace(x.TransactionType))
                     .Sum(x => Math.Abs(x.Amount));
 
-                MonthTotal = ThisMonthCredit - ThisMonthDebit;
+                MonthTotal = ThisMonthDebit; // Set to total spending magnitude or net balance (ThisMonthCredit - ThisMonthDebit)
+
+                // 4. Compute Remaining Budget Metrics
+                MonthlyBudget = await _repository.GetMonthlyBudgetAsync();
+                if (MonthlyBudget > 0)
+                {
+                    HasBudgetSet = true;
+                    RemainingBudget = MonthlyBudget - ThisMonthDebit;
+                }
+                else
+                {
+                    HasBudgetSet = false;
+                    RemainingBudget = 0;
+                }
 
                 PendingImports = imported.Count;
 
@@ -234,7 +278,6 @@ namespace ExpenseTracker.ViewModels
             var expenses = await _repository.GetExpensesAsync();
             int pendingCount = expenses.Count(x => x.ProcessingStatus == "PendingAiReview");
 
-            // Toggles the visibility of the dashboard alert notification bar instantly
             HasPendingAiTransactions = pendingCount > 0;
         }
 
@@ -275,7 +318,6 @@ namespace ExpenseTracker.ViewModels
                             var localMatch = currentChunk.FirstOrDefault(x => x.Id == aiItem.Id);
                             if (localMatch != null)
                             {
-                                // Enforce a strict positive absolute number structure directly into the database row
                                 localMatch.Amount = Math.Abs(aiItem.Amount ?? 0m);
                                 localMatch.Category = aiItem.Category;
                                 localMatch.TransactionType = aiItem.TransactionType;

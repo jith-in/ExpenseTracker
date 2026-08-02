@@ -4,25 +4,31 @@
              xmlns:vm="clr-namespace:ExpenseTracker.ViewModels"
              x:Class="ExpenseTracker.Views.AddExpensePage"
              x:DataType="vm:AddExpenseViewModel"
-             Title="Add Expense">
+             Title="Edit Expense">
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
-            <Label Text="New Expense" FontSize="Large" FontAttributes="Bold" />
+            <Label Text="Edit Expense" FontSize="Large" FontAttributes="Bold" />
 
+            <Label Text="Amount" FontSize="Caption" TextColor="Gray" />
             <Entry Placeholder="Amount" Keyboard="Numeric" Text="{Binding AmountText}" />
 
-            <!-- 🎯 Transaction Type Selection (Debit / Credit) -->
-            <Picker Title="Transaction Type" 
+            <!-- 🎯 ADDED: Transaction Type Selection (Debit / Credit) -->
+            <Label Text="Transaction Type" FontSize="Caption" TextColor="Gray" />
+            <Picker Title="Select Transaction Type" 
                     ItemsSource="{Binding TransactionTypes}" 
                     SelectedItem="{Binding SelectedTransactionType}" />
 
+            <Label Text="Category" FontSize="Caption" TextColor="Gray" />
             <Picker Title="Category" ItemsSource="{Binding Categories}" ItemDisplayBinding="{Binding Name}" SelectedItem="{Binding SelectedCategory}" />
 
+            <Label Text="Payment Method" FontSize="Caption" TextColor="Gray" />
             <Picker Title="Payment Method" ItemsSource="{Binding PaymentMethods}" ItemDisplayBinding="{Binding Name}" SelectedItem="{Binding SelectedPaymentMethod}" />
 
+            <Label Text="Date" FontSize="Caption" TextColor="Gray" />
             <DatePicker Date="{Binding Date}" />
 
+            <Label Text="Notes" FontSize="Caption" TextColor="Gray" />
             <Editor HeightRequest="100" Placeholder="Notes" Text="{Binding Note}" />
 
             <!-- Action Buttons Grid Configuration -->
@@ -37,7 +43,7 @@
 
                 <!-- Save/Confirm Button -->
                 <Button Grid.Column="1"
-                        Text="Save Expense"
+                        Text="Save Changes"
                         Command="{Binding SaveExpenseCommand}" />
 
             </Grid>
