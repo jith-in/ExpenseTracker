@@ -8,23 +8,29 @@
              x:Name="HistoryPage"
              Title="Expense History">
 
-    <VerticalStackLayout Padding="20" Spacing="16">
-        <Label Text="Expense History" FontSize="Large" FontAttributes="Bold" />
+    <!-- 🟢 FIXED: Use Grid with explicit row sizing instead of VerticalStackLayout -->
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="16" Padding="20">
 
-        <SearchBar
-            Placeholder="Search by category, note, merchant or reference"
-            Text="{Binding SearchText}"
-            SearchCommand="{Binding LoadExpensesCommand}" />
+        <Label Grid.Row="0" 
+               Text="Expense History" 
+               FontSize="Large" 
+               FontAttributes="Bold" />
 
-        <RefreshView
-            IsRefreshing="{Binding IsRefreshing}"
-            Command="{Binding RefreshCommand}">
-            <CollectionView
-                ItemsSource="{Binding FilteredExpenses}"
-                SelectionMode="None">
+        <SearchBar Grid.Row="1"
+                   Placeholder="Search by category, note, merchant or reference"
+                   Text="{Binding SearchText}"
+                   SearchCommand="{Binding LoadExpensesCommand}" />
+
+        <!-- 🟢 Grid.Row="2" allows RefreshView & CollectionView to occupy remaining screen space -->
+        <RefreshView Grid.Row="2"
+                     IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding RefreshCommand}">
+
+            <CollectionView ItemsSource="{Binding FilteredExpenses}"
+                            SelectionMode="None">
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="models:Expense">
-                        <Frame BackgroundColor="WhiteSmoke" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Frame BackgroundColor="Gray" CornerRadius="10" Padding="12" Margin="0,0,0,10">
                             <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                 <VerticalStackLayout Grid.RowSpan="2" Spacing="4">
                                     <Label Text="{Binding Category}" FontAttributes="Bold" />
@@ -32,23 +38,20 @@
                                     <Label Text="{Binding Date, StringFormat='{0:dd MMM yyyy}'}" FontSize="Small" TextColor="Gray" />
                                 </VerticalStackLayout>
 
-                                <Label
-                                    Text="{Binding Amount, StringFormat='₹{0:F2}'}"
-                                    Grid.Column="1"
-                                    VerticalOptions="Start"
-                                    FontAttributes="Bold" />
+                                <Label Text="{Binding Amount, StringFormat='₹{0:F2}'}"
+                                       Grid.Column="1"
+                                       VerticalOptions="Start"
+                                       FontAttributes="Bold" />
 
                                 <HorizontalStackLayout Grid.Row="1" Grid.ColumnSpan="2" Spacing="10" HorizontalOptions="End">
-                                    <Button
-                                        Text="Edit"
-                                        Command="{Binding Source={x:Reference HistoryPage}, Path=BindingContext.EditExpenseCommand}"
-                                        CommandParameter="{Binding .}" />
-                                    <Button
-                                        Text="Delete"
-                                        TextColor="White"
-                                        BackgroundColor="Crimson"
-                                        Command="{Binding Source={x:Reference HistoryPage}, Path=BindingContext.DeleteExpenseCommand}"
-                                        CommandParameter="{Binding .}" />
+                                    <Button Text="Edit"
+                                            Command="{Binding Source={x:Reference HistoryPage}, Path=BindingContext.EditExpenseCommand}"
+                                            CommandParameter="{Binding .}" />
+                                    <Button Text="Delete"
+                                            TextColor="Beige"
+                                            BackgroundColor="Crimson"
+                                            Command="{Binding Source={x:Reference HistoryPage}, Path=BindingContext.DeleteExpenseCommand}"
+                                            CommandParameter="{Binding .}" />
                                 </HorizontalStackLayout>
                             </Grid>
                         </Frame>
@@ -56,5 +59,5 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
         </RefreshView>
-    </VerticalStackLayout>
+    </Grid>
 </ContentPage>

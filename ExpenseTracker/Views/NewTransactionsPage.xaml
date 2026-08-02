@@ -23,21 +23,41 @@
                TextColor="Red" 
                IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
 
-        <!-- High-Performance Interactive Refresh Border Button (Bypasses Material Components) -->
-        <Border Grid.Row="2"
-                BackgroundColor="{StaticResource Primary}"
-                StrokeShape="RoundRectangle 8"
-                Padding="16,12"
-                HorizontalOptions="Fill">
-            <Border.GestureRecognizers>
-                <TapGestureRecognizer Command="{Binding LoadNewTransactionsCommand}" />
-            </Border.GestureRecognizers>
-            <Label Text="Refresh Inbox Messages"
-                   TextColor="White"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   VerticalOptions="Center" />
-        </Border>
+        <!-- 🌟 UPDATED: Side-by-Side Interactive Action Control Row Deck -->
+        <Grid Grid.Row="2" 
+              ColumnDefinitions="*,*" 
+              ColumnSpacing="12">
+
+            <!-- Refresh Button Card -->
+            <Border Grid.Column="0"
+                    BackgroundColor="{StaticResource Primary}"
+                    StrokeShape="RoundRectangle 8"
+                    Padding="12,10">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding LoadNewTransactionsCommand}" />
+                </Border.GestureRecognizers>
+                <Label Text="Refresh Inbox" 
+                       TextColor="White" 
+                       FontAttributes="Bold" 
+                       HorizontalOptions="Center" 
+                       VerticalOptions="Center" />
+            </Border>
+
+            <!-- Bulk Approve Button Card -->
+            <Border Grid.Column="1"
+                    BackgroundColor="#117A65"
+                    StrokeShape="RoundRectangle 8"
+                    Padding="12,10">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding LogAllTransactionsCommand}" />
+                </Border.GestureRecognizers>
+                <Label Text="Approve All" 
+                       TextColor="White" 
+                       FontAttributes="Bold" 
+                       HorizontalOptions="Center" 
+                       VerticalOptions="Center" />
+            </Border>
+        </Grid>
 
         <!-- Inline AI Loading Panel isolated cleanly outside the scrolling viewport window -->
         <HorizontalStackLayout Grid.Row="3" 
@@ -91,12 +111,33 @@
                         </Border.Triggers>
 
                         <VerticalStackLayout Spacing="6">
+                            <!-- Merchant and Amount Row -->
                             <Grid ColumnDefinitions="*,Auto">
                                 <Label Grid.Column="0" Text="{Binding Merchant}" FontAttributes="Bold" TextColor="White" FontSize="16" LineBreakMode="TailTruncation" />
                                 <Label Grid.Column="1" Text="{Binding Amount, StringFormat='₹{0:F2}'}" TextColor="White" FontAttributes="Bold" FontSize="16" />
                             </Grid>
 
-                            <Label Text="{Binding SuggestedCategory, StringFormat='Suggested Category: {0}'}" TextColor="White" FontSize="13" />
+                            <!-- Category and Transaction Type Row -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Grid.Column="0" Text="{Binding SuggestedCategory, StringFormat='Suggested Category: {0}'}" TextColor="White" FontSize="13" VerticalOptions="Center" />
+
+                                <!-- 🎯 Transaction Type Badge (Credit / Debit) -->
+                                <Label Grid.Column="1" 
+                                       Text="{Binding TransactionType}" 
+                                       FontSize="12" 
+                                       FontAttributes="Bold" 
+                                       Padding="6,2" 
+                                       VerticalOptions="Center">
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding TransactionType}" Value="Credit">
+                                            <Setter Property="TextColor" Value="#A9DFBF" />
+                                        </DataTrigger>
+                                        <DataTrigger TargetType="Label" Binding="{Binding TransactionType}" Value="Debit">
+                                            <Setter Property="TextColor" Value="#FADBD8" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                            </Grid>
 
                             <!-- Safe Date Parsing Field Display Layout -->
                             <Label Text="{Binding SmsReceivedDate, StringFormat='Received: {0:dd MMM yyyy HH:mm}'}" FontSize="11" TextColor="LightYellow" />
@@ -113,35 +154,32 @@
                                    TextDecorations="Underline">
                                 <Label.GestureRecognizers>
                                     <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=ViewFullMessageCommand}" 
-                                                           CommandParameter="{Binding .}" />
+                                                          CommandParameter="{Binding .}" />
                                 </Label.GestureRecognizers>
                             </Label>
 
-                            <!-- Interactive Button Stack (Platform Native Styles Excluded) -->
+                            <!-- Interactive Button Stack -->
                             <HorizontalStackLayout Spacing="10">
-                                <!-- 🎨 Custom Edit Button Card Layout -->
                                 <Border BackgroundColor="#2C3E50" StrokeShape="RoundRectangle 4" Padding="16,8" VerticalOptions="Center">
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=EditTransactionCommand}" 
-                                                               CommandParameter="{Binding .}" />
+                                                              CommandParameter="{Binding .}" />
                                     </Border.GestureRecognizers>
                                     <Label Text="Edit" TextColor="White" FontSize="12" FontAttributes="Bold" />
                                 </Border>
 
-                                <!-- 🎨 Custom Accept Button Card Layout -->
                                 <Border BackgroundColor="#1E8449" StrokeShape="RoundRectangle 4" Padding="16,8" VerticalOptions="Center">
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=AcceptTransactionCommand}" 
-                                                               CommandParameter="{Binding .}" />
+                                                              CommandParameter="{Binding .}" />
                                     </Border.GestureRecognizers>
                                     <Label Text="Accept" TextColor="White" FontSize="12" FontAttributes="Bold" />
                                 </Border>
 
-                                <!-- 🎨 Custom Ignore Button Card Layout -->
                                 <Border BackgroundColor="#7F8C8D" StrokeShape="RoundRectangle 4" Padding="16,8" VerticalOptions="Center">
                                     <Border.GestureRecognizers>
                                         <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:NewTransactionsViewModel}}, Path=IgnoreTransactionCommand}" 
-                                                               CommandParameter="{Binding .}" />
+                                                              CommandParameter="{Binding .}" />
                                     </Border.GestureRecognizers>
                                     <Label Text="Ignore" TextColor="White" FontSize="12" FontAttributes="Bold" />
                                 </Border>

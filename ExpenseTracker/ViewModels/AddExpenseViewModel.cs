@@ -1,7 +1,8 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories;
+using ExpenseTracker.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,13 +11,18 @@ using System.Threading.Tasks;
 
 namespace ExpenseTracker.ViewModels
 {
-    // FIX: Explicitly added IQueryAttributable interface implementation
     public partial class AddExpenseViewModel : BaseViewModel, IQueryAttributable
     {
         private readonly IExpenseRepository _repository;
+        private readonly IBudgetAlertService _budgetAlertService; // 🎯 1. Added Budget Service Reference
         private string _amountText = string.Empty;
         private ObservableCollection<Category> _categories = new();
         private ObservableCollection<PaymentMethod> _paymentMethods = new();
+
+        // 🎯 Transaction Type State
+        private ObservableCollection<string> _transactionTypes = new() { "Debit", "Credit" };
+        private string _selectedTransactionType = "Debit";
+
         private Category? _selectedCategory;
         private PaymentMethod? _selectedPaymentMethod;
         private DateTime _date = DateTime.Today;
@@ -25,14 +31,15 @@ namespace ExpenseTracker.ViewModels
         private int _pendingImportId;
         private string _pendingCategoryName = string.Empty;
         private string _pendingMerchantName = string.Empty;
+        private string _pendingTransactionType = string.Empty;
 
-        public AddExpenseViewModel(IExpenseRepository repository)
+        // 🎯 2. Injected IBudgetAlertService into constructor
+        public AddExpenseViewModel(IExpenseRepository repository, IBudgetAlertService budgetAlertService)
         {
             _repository = repository;
+            _budgetAlertService = budgetAlertService;
             Title = "Add Expense";
             SaveExpenseCommand = new AsyncRelayCommand(SaveExpenseAsync);
-
-            // ADDED: Initialize the Cancel Command
             CancelCommand = new AsyncRelayCommand(CancelAsync);
         }
 
@@ -40,6 +47,18 @@ namespace ExpenseTracker.ViewModels
         {
             get => _amountText;
             set => SetProperty(ref _amountText, value);
+        }
+
+        public ObservableCollection<string> TransactionTypes
+        {
+            get => _transactionTypes;
+            set => SetProperty(ref _transactionTypes, value);
+        }
+
+        public string SelectedTransactionType
+        {
+            get => _selectedTransactionType;
+            set => SetProperty(ref _selectedTransactionType, value);
         }
 
         public ObservableCollection<Category> Categories
@@ -85,16 +104,11 @@ namespace ExpenseTracker.ViewModels
         }
 
         public IAsyncRelayCommand SaveExpenseCommand { get; }
-
-        // ADDED: Expose CancelCommand interface property wrapper
         public IAsyncRelayCommand CancelCommand { get; }
 
         public async Task LoadOptionsAsync()
         {
-            if (IsBusy)
-            {
-                return;
-            }
+            if (IsBusy) return;
 
             IsBusy = true;
 
@@ -121,7 +135,12 @@ namespace ExpenseTracker.ViewModels
                     Note = _pendingMerchantName;
                 }
 
-                // Default payment method setup for incoming SMS transactions
+                if (!string.IsNullOrWhiteSpace(_pendingTransactionType))
+                {
+                    SelectedTransactionType = TransactionTypes.FirstOrDefault(t => string.Equals(t, _pendingTransactionType, StringComparison.OrdinalIgnoreCase)) ?? "Debit";
+                    _pendingTransactionType = string.Empty;
+                }
+
                 SelectedPaymentMethod = PaymentMethods.FirstOrDefault(p => p.Name == "UPI") ?? PaymentMethods.FirstOrDefault();
             }
             finally
@@ -153,6 +172,11 @@ namespace ExpenseTracker.ViewModels
                 _pendingCategoryName = category?.ToString() ?? string.Empty;
             }
 
+            if (query.TryGetValue("type", out var type) || query.TryGetValue("transactionType", out type))
+            {
+                _pendingTransactionType = type?.ToString() ?? string.Empty;
+            }
+
             if (query.TryGetValue("importId", out var importId) && int.TryParse(importId.ToString(), out var id))
             {
                 _pendingImportId = id;
@@ -161,10 +185,7 @@ namespace ExpenseTracker.ViewModels
 
         private async Task SaveExpenseAsync()
         {
-            if (IsBusy)
-            {
-                return;
-            }
+            if (IsBusy) return;
 
             if (!decimal.TryParse(AmountText?.Replace(",", string.Empty), out var amount) || amount <= 0)
             {
@@ -190,9 +211,10 @@ namespace ExpenseTracker.ViewModels
             {
                 var expense = new Expense
                 {
-                    Amount = amount,
+                    Amount = Math.Abs(amount),
                     Category = SelectedCategory.Name,
                     PaymentMethod = SelectedPaymentMethod.Name,
+                    TransactionType = SelectedTransactionType,
                     Date = Date,
                     Note = Note?.Trim() ?? string.Empty,
                     IsImported = _pendingImportId > 0,
@@ -202,14 +224,12 @@ namespace ExpenseTracker.ViewModels
 
                 if (_pendingImportId > 0)
                 {
-                    // Update merchant learning mappings
                     await _repository.SaveMerchantCategoryMappingAsync(new MerchantCategoryMapping
                     {
                         Merchant = Note?.Trim() ?? string.Empty,
                         Category = SelectedCategory.Name
                     });
 
-                    // Mark as processed
                     var imports = await _repository.GetImportedTransactionsAsync();
                     var match = imports.FirstOrDefault(x => x.Id == _pendingImportId);
                     if (match != null)
@@ -220,17 +240,19 @@ namespace ExpenseTracker.ViewModels
 
                 StatusMessage = "Expense saved successfully.";
 
+                // 🎯 3. Check and display budget alert if threshold or limit is reached
+                await _budgetAlertService.CheckAndShowBudgetAlertAsync();
+
                 if (_pendingImportId > 0)
                 {
-                    // FIX: Changed from flaking relative route ".." to absolute route to safely redirect without backstack context dependencies
                     await Shell.Current.GoToAsync("///NewTransactionsPage");
                 }
                 else
                 {
-                    // Clean down form entries if adding a standard non-imported expense manually
                     AmountText = string.Empty;
                     Note = string.Empty;
                     Date = DateTime.Today;
+                    SelectedTransactionType = "Debit";
                     SelectedCategory = Categories.FirstOrDefault();
                     SelectedPaymentMethod = PaymentMethods.FirstOrDefault();
                     _pendingImportId = 0;
@@ -242,27 +264,21 @@ namespace ExpenseTracker.ViewModels
             }
         }
 
-        // ADDED: Type-Safe Cancel Method
         private async Task CancelAsync()
         {
-            if (IsBusy)
-            {
-                return;
-            }
+            if (IsBusy) return;
 
             if (_pendingImportId > 0)
             {
-                // Clean down volatile tracking properties to avoid state pollution on subsequent standard views
                 _pendingImportId = 0;
                 _pendingCategoryName = string.Empty;
                 _pendingMerchantName = string.Empty;
+                _pendingTransactionType = string.Empty;
 
-                // Absolute route back to the unreviewed transaction queue cleanly
                 await Shell.Current.GoToAsync("///NewTransactionsPage");
             }
             else
             {
-                // Standard contextual back navigation for manual adds
                 await Shell.Current.GoToAsync("..");
             }
         }

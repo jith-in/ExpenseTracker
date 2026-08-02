@@ -116,5 +116,17 @@ namespace ExpenseTracker.Repositories
         {
             await _database.BulkLogTransactionsAsync(expenses, transactions);
         }
+        public async Task<decimal> GetMonthlyBudgetAsync()
+        {
+            // Retrieve stored double or default to 0.0
+            double savedBudget = Preferences.Get("MonthlyBudget", 0.0);
+            return await Task.FromResult((decimal)savedBudget);
+        }
+
+        public async Task SaveMonthlyBudgetAsync(decimal budget)
+        {
+            Preferences.Set("MonthlyBudget", (double)budget);
+            await Task.CompletedTask;
+        }
     }
 }

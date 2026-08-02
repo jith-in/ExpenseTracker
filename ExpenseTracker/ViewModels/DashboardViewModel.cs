@@ -150,10 +150,7 @@ namespace ExpenseTracker.ViewModels
         [RelayCommand]
         public async Task LoadDashboardAsync()
         {
-            if (IsBusy)
-            {
-                return;
-            }
+            if (IsBusy) return;
 
             Debug.WriteLine("Startup: DashboardViewModel.LoadDashboardAsync begin");
             IsBusy = true;
@@ -162,35 +159,38 @@ namespace ExpenseTracker.ViewModels
             {
                 var expenses = await _repository.GetExpensesAsync();
                 var imported = await _repository.GetImportedTransactionsAsync();
-
                 var now = DateTime.UtcNow;
 
-                // 1. Calculate Today's Pure Volume
-                TodayTotal = expenses.Where(x => x.Date.Date == now.Date).Sum(x => x.Amount);
+                // 1. Calculate Today's Pure Volume using absolute metrics
+                TodayTotal = expenses.Where(x => x.Date.Date == now.Date).Sum(x => Math.Abs(x.Amount));
 
-                // 2. Aggregate and segment "This Year" Data Rows
+                // 2. Aggregate and segment "This Year" Data Rows safely
                 var yearTransactions = expenses.Where(x => x.Date.Year == now.Year).ToList();
 
+                // 🟢 FIXED: Check TransactionType instead of hardcoded Category strings
                 ThisYearCredit = yearTransactions
                     .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => x.Amount);
+                    .Sum(x => Math.Abs(x.Amount));
 
                 ThisYearDebit = yearTransactions
-                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => x.Amount);
+                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase)
+                             || string.IsNullOrWhiteSpace(x.TransactionType))
+                    .Sum(x => Math.Abs(x.Amount));
 
-                YearTotal = ThisYearCredit - ThisYearDebit;
+                YearTotal = ThisYearCredit - ThisYearDebit; // Yields clean net balance
 
-                // 3. Aggregate and segment "This Month" Data Rows
+                // 3. Aggregate and segment "This Month" Data Rows safely
                 var monthTransactions = yearTransactions.Where(x => x.Date.Month == now.Month).ToList();
 
+                // 🟢 FIXED: Check TransactionType instead of hardcoded Category strings
                 ThisMonthCredit = monthTransactions
                     .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => x.Amount);
+                    .Sum(x => Math.Abs(x.Amount));
 
                 ThisMonthDebit = monthTransactions
-                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase))
-                    .Sum(x => x.Amount);
+                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase)
+                             || string.IsNullOrWhiteSpace(x.TransactionType))
+                    .Sum(x => Math.Abs(x.Amount));
 
                 MonthTotal = ThisMonthCredit - ThisMonthDebit;
 
@@ -205,17 +205,16 @@ namespace ExpenseTracker.ViewModels
                 TopCategories.Clear();
                 foreach (var categoryGroup in expenses
                     .GroupBy(x => x.Category)
-                    .OrderByDescending(g => g.Sum(x => x.Amount))
+                    .OrderByDescending(g => g.Sum(x => Math.Abs(x.Amount)))
                     .Take(5))
                 {
                     TopCategories.Add(new CategorySummary
                     {
                         Category = categoryGroup.Key,
-                        Total = categoryGroup.Sum(x => x.Amount)
+                        Total = categoryGroup.Sum(x => Math.Abs(x.Amount))
                     });
                 }
 
-                // Keep the pending review indicator bar accurately updated
                 await CheckPendingTransactionsAsync();
             }
             catch (Exception ex)
@@ -244,7 +243,6 @@ namespace ExpenseTracker.ViewModels
         {
             if (IsBusy) return;
 
-            // 1. Guard against dead network zones before hitting the API engine
             if (Connectivity.Current.NetworkAccess != Microsoft.Maui.Networking.NetworkAccess.Internet)
             {
                 await Shell.Current.DisplayAlert("No Connection", "You need an active internet connection to verify items via the cloud.", "OK");
@@ -252,7 +250,7 @@ namespace ExpenseTracker.ViewModels
             }
 
             IsBusy = true;
-            System.Diagnostics.Debug.WriteLine("[Dashboard AI] Initiating chunked batch classification pipeline...");
+            Debug.WriteLine("[Dashboard AI] Initiating chunked batch classification pipeline...");
 
             try
             {
@@ -261,75 +259,60 @@ namespace ExpenseTracker.ViewModels
 
                 if (!pendingItems.Any()) return;
 
-                // 🎯 Strategy 2 Implementation: Partition backlog rows into chunks of 50 max
                 var messageChunks = pendingItems.Chunk(50).ToList();
 
                 for (int i = 0; i < messageChunks.Count; i++)
                 {
                     var currentChunk = messageChunks[i].ToList();
-                    System.Diagnostics.Debug.WriteLine($"[Dashboard AI] Processing chunk {i + 1} of {messageChunks.Count} ({currentChunk.Count} messages)...");
-
-                    // Transmit the slice payload to Gemini REST engine via single POST request
                     var aiResponse = await _aiService.ParseBatchAsync(currentChunk);
 
                     if (aiResponse?.ProcessedTransactions != null)
                     {
-                        // 📝 LOG TRACKING: Initialize counter for this specific batch partition run
                         int matchedCount = 0;
 
                         foreach (var aiItem in aiResponse.ProcessedTransactions)
                         {
-                            // Match the cloud properties back to the local records within the current chunk boundaries
                             var localMatch = currentChunk.FirstOrDefault(x => x.Id == aiItem.Id);
                             if (localMatch != null)
                             {
-                                localMatch.Amount = aiItem.Amount;
+                                // Enforce a strict positive absolute number structure directly into the database row
+                                localMatch.Amount = Math.Abs(aiItem.Amount ?? 0m);
                                 localMatch.Category = aiItem.Category;
                                 localMatch.TransactionType = aiItem.TransactionType;
-                                localMatch.Note = aiItem.Note;
-                                localMatch.ProcessingStatus = "AiResolved"; // Flip processing state flag
+                                localMatch.Note = aiItem.MerchantOrEntity;
+                                localMatch.ProcessingStatus = "AiResolved";
 
-                                // Save updates directly to the physical SQLite cache layer
                                 await _repository.SaveExpenseAsync(localMatch);
-
-                                // Increment tracking index loop status metric
                                 matchedCount++;
                             }
                         }
-
-                        // 📝 LOG INTEGRATION: Print out exactly how many matching entity items Gemini successfully parsed back
-                        System.Diagnostics.Debug.WriteLine($"[Dashboard AI Batch] Successfully matched and updated {matchedCount} out of {currentChunk.Count} local database rows for chunk {i + 1}.");
+                        Debug.WriteLine($"[Dashboard AI Batch] Updated {matchedCount} rows for chunk {i + 1}.");
                     }
 
-                    // ⏳ Defensive Throttling: Sleep for 3 seconds between chunks to stay well under the RPM limits
                     if (i < messageChunks.Count - 1)
                     {
-                        System.Diagnostics.Debug.WriteLine("[Dashboard AI] Resting for 3 seconds to protect free tier rate limits...");
                         await Task.Delay(3000);
                     }
                 }
 
-                // Force UI layout grids to recalculate metric values based on fresh allocations
                 await LoadDashboardAsync();
                 await Shell.Current.DisplayAlert("Success", "All pending transactions have been processed dynamically.", "OK");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Dashboard AI Failure]: {ex.Message}");
-                await Shell.Current.DisplayAlert("Sync Failed", "Could not auto-categorize items right now. They will remain in queue.", "OK");
+                Debug.WriteLine($"[Dashboard AI Failure]: {ex.Message}");
+                await Shell.Current.DisplayAlert("Sync Failed", "Could not auto-categorize items right now.", "OK");
             }
             finally
             {
                 IsBusy = false;
             }
         }
+
         [RelayCommand]
         public async Task NavigateToNewTransactionsAsync()
         {
             Debug.WriteLine("[Dashboard] Navigating to New Transactions page...");
-
-            // 🚀 Uses Shell to route to your NewTransactionsPage
-            // Note: If you registered it as a tab route, you may need "///NewTransactionsPage"
             await Shell.Current.GoToAsync("NewTransactionsPage");
         }
     }

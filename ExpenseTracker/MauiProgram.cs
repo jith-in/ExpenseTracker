@@ -5,9 +5,10 @@ using ExpenseTracker.Repositories;
 using ExpenseTracker.Services;
 using ExpenseTracker.ViewModels;
 using ExpenseTracker.Views;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
+
 namespace ExpenseTracker
 {
     public static class MauiProgram
@@ -26,6 +27,7 @@ namespace ExpenseTracker
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
+            // Services & Repositories
             builder.Services.AddSingleton<IDatabaseService, DatabaseService>();
             builder.Services.AddSingleton<IFileService, FileService>();
             builder.Services.AddSingleton<ExpenseDatabase>();
@@ -34,6 +36,10 @@ namespace ExpenseTracker
             builder.Services.AddSingleton<ISmsReaderService, SmsReaderService>();
             builder.Services.AddSingleton<CsvExportService>();
             builder.Services.AddSingleton<BackupService>();
+            builder.Services.AddSingleton<HttpClient>();
+            builder.Services.AddTransient<IAiService, AiService>();
+
+            // ViewModels
             builder.Services.AddTransient<DashboardViewModel>();
             builder.Services.AddTransient<AddExpenseViewModel>();
             builder.Services.AddTransient<ExpenseHistoryViewModel>();
@@ -41,19 +47,24 @@ namespace ExpenseTracker
             builder.Services.AddTransient<NewTransactionsViewModel>();
             builder.Services.AddTransient<ReportsViewModel>();
             builder.Services.AddTransient<SettingsViewModel>();
-            builder.Services.AddTransient<CategoryDetailsPage>();
             builder.Services.AddTransient<CategoryDetailsViewModel>();
-            builder.Services.AddTransient<ResetPage>();
             builder.Services.AddTransient<ResetViewModel>();
-            builder.Services.AddTransient<Views.MonthlyDetailsPage>();
             builder.Services.AddTransient<ViewModels.MonthlyDetailsViewModel>();
-            builder.Services.AddTransient<Views.PaymentMethodDetailsPage>();
             builder.Services.AddTransient<ViewModels.PaymentMethodDetailsViewModel>();
 
-            builder.Services.AddSingleton<HttpClient>();
-            builder.Services.AddTransient<IAiService, AiService>();
-            builder.Services.AddSingleton<DashboardViewModel>();
-            builder.Services.AddSingleton<DashboardPage>();
+            // Views / Pages (Explicitly Registered for MAUI DI Routing)
+            builder.Services.AddTransient<DashboardPage>();
+            builder.Services.AddTransient<AddExpensePage>();
+            builder.Services.AddTransient<ExpenseHistoryPage>();
+            builder.Services.AddTransient<EditExpensePage>();
+            builder.Services.AddTransient<NewTransactionsPage>();
+            builder.Services.AddTransient<ReportsPage>();
+            builder.Services.AddTransient<SettingsPage>();
+            builder.Services.AddTransient<CategoryDetailsPage>();
+            builder.Services.AddTransient<ResetPage>();
+            builder.Services.AddTransient<Views.MonthlyDetailsPage>();
+            builder.Services.AddTransient<Views.PaymentMethodDetailsPage>();
+            builder.Services.AddSingleton<IBudgetAlertService, BudgetAlertService>();
 #if DEBUG
             builder.Logging.AddDebug();
 #endif

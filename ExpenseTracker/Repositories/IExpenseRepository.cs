@@ -28,5 +28,8 @@ namespace ExpenseTracker.Repositories
         Task<List<Expense>> GetExpensesByCategoryAsync(string categoryName);
         Task ClearAllDataAsync();
         Task BulkLogTransactionsAsync(List<Expense> expenses, List<ImportedTransaction> transactions);
+
+        Task<decimal> GetMonthlyBudgetAsync();
+        Task SaveMonthlyBudgetAsync(decimal budget);
     }
 }

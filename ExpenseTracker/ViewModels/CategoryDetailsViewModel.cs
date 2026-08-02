@@ -57,10 +57,19 @@ namespace ExpenseTracker.ViewModels
             {
                 var expenses = await _repository.GetExpensesByCategoryAsync(CategoryName);
 
-                // Summary processing calculations
                 TransactionCount = expenses.Count;
-                TotalDebit = expenses.Where(x => x.Amount > 0).Sum(x => x.Amount);
-                TotalCredit = expenses.Where(x => x.Amount < 0).Sum(x => Math.Abs(x.Amount));
+
+                // 🎯 FIX: Calculate summary items by explicit database row context type, using absolute values
+                TotalDebit = expenses
+                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase))
+                    .Sum(x => Math.Abs(x.Amount)); // Force it to be a positive number for the UI
+
+                // 2. Calculate Credit based strictly on the string "Credit"
+                TotalCredit = expenses
+                    .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
+                    .Sum(x => Math.Abs(x.Amount)); // Force it to be a positive number for the UI
+
+                // 3. Now the math will be: (True Debits) - (True Credits)
                 NetExpense = TotalDebit - TotalCredit;
 
                 // Group structural records uniformly by clear date boundaries

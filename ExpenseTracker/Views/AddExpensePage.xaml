@@ -12,6 +12,11 @@
 
             <Entry Placeholder="Amount" Keyboard="Numeric" Text="{Binding AmountText}" />
 
+            <!-- 🎯 Transaction Type Selection (Debit / Credit) -->
+            <Picker Title="Transaction Type" 
+                    ItemsSource="{Binding TransactionTypes}" 
+                    SelectedItem="{Binding SelectedTransactionType}" />
+
             <Picker Title="Category" ItemsSource="{Binding Categories}" ItemDisplayBinding="{Binding Name}" SelectedItem="{Binding SelectedCategory}" />
 
             <Picker Title="Payment Method" ItemsSource="{Binding PaymentMethods}" ItemDisplayBinding="{Binding Name}" SelectedItem="{Binding SelectedPaymentMethod}" />

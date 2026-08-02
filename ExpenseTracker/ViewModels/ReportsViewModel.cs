@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -68,10 +69,7 @@ namespace ExpenseTracker.ViewModels
         [RelayCommand]
         public async Task LoadReportsAsync()
         {
-            if (IsBusy)
-            {
-                return;
-            }
+            if (IsBusy) return;
 
             Debug.WriteLine("Startup: ReportsViewModel.LoadReportsAsync begin");
             IsBusy = true;
@@ -79,22 +77,74 @@ namespace ExpenseTracker.ViewModels
 
             try
             {
-                // Fetch consolidated data rows from the repository layer
-                var categories = await _repository.GetCategoryReportAsync();
-                var monthly = await _repository.GetMonthlyReportAsync(SelectedYear);
-                var methods = await _repository.GetPaymentMethodReportAsync();
+                // Fetch all raw expense rows directly to ensure precise filtering by TransactionType
+                var allExpenses = await _repository.GetExpensesAsync();
+                var yearExpenses = allExpenses.Where(x => x.Date.Year == SelectedYear).ToList();
 
-                // 1. Separate Category Items (Positive totals = Debit, Negative totals = Credit)
-                DebitCategoryItems = new ObservableCollection<CategoryReportItem>(categories.Where(x => x.Total > 0));
-                CreditCategoryItems = new ObservableCollection<CategoryReportItem>(categories.Where(x => x.Total < 0));
+                // 🎯 1. CATEGORIES SPLIT BY TRANSACTION TYPE
+                var debitCats = yearExpenses
+                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(x.TransactionType))
+                    .GroupBy(x => string.IsNullOrWhiteSpace(x.Category) ? "Others" : x.Category)
+                    .Select(g => new CategoryReportItem { Category = g.Key, Total = g.Sum(x => Math.Abs(x.Amount)) })
+                    .OrderByDescending(x => x.Total)
+                    .ToList();
 
-                // 2. Separate Monthly Items
-                DebitMonthlyItems = new ObservableCollection<MonthlyReportItem>(monthly.Where(x => x.Total > 0));
-                CreditMonthlyItems = new ObservableCollection<MonthlyReportItem>(monthly.Where(x => x.Total < 0));
+                var creditCats = yearExpenses
+                    .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
+                    .GroupBy(x => string.IsNullOrWhiteSpace(x.Category) ? "Others" : x.Category)
+                    .Select(g => new CategoryReportItem { Category = g.Key, Total = g.Sum(x => Math.Abs(x.Amount)) })
+                    .OrderByDescending(x => x.Total)
+                    .ToList();
 
-                // 3. Separate Payment Method Items
-                DebitPaymentMethodItems = new ObservableCollection<PaymentMethodReportItem>(methods.Where(x => x.Total > 0));
-                CreditPaymentMethodItems = new ObservableCollection<PaymentMethodReportItem>(methods.Where(x => x.Total < 0));
+                DebitCategoryItems = new ObservableCollection<CategoryReportItem>(debitCats);
+                CreditCategoryItems = new ObservableCollection<CategoryReportItem>(creditCats);
+
+               
+                // 🎯 2. MONTHLY WISE SPLIT BY TRANSACTION TYPE
+                var debitMonths = yearExpenses
+                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(x.TransactionType))
+                    .GroupBy(x => x.Date.Month)
+                    .Select(g => new MonthlyReportItem
+                    {
+                        Year = SelectedYear,
+                        Month = g.Key, // 🟢 FIXED: Assign int g.Key directly (1..12) instead of month name string
+                        Total = g.Sum(x => Math.Abs(x.Amount))
+                    })
+                    .OrderBy(x => x.Month)
+                    .ToList();
+
+                var creditMonths = yearExpenses
+                    .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
+                    .GroupBy(x => x.Date.Month)
+                    .Select(g => new MonthlyReportItem
+                    {
+                        Year = SelectedYear,
+                        Month = g.Key, // 🟢 FIXED: Assign int g.Key directly (1..12) instead of month name string
+                        Total = g.Sum(x => Math.Abs(x.Amount))
+                    })
+                    .OrderBy(x => x.Month)
+                    .ToList();
+
+                DebitMonthlyItems = new ObservableCollection<MonthlyReportItem>(debitMonths);
+                CreditMonthlyItems = new ObservableCollection<MonthlyReportItem>(creditMonths);
+
+                // 🎯 3. PAYMENT METHOD WISE SPLIT BY TRANSACTION TYPE
+                var debitMethods = yearExpenses
+                    .Where(x => string.Equals(x.TransactionType, "Debit", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(x.TransactionType))
+                    .GroupBy(x => string.IsNullOrWhiteSpace(x.PaymentMethod) ? "Net Banking" : x.PaymentMethod)
+                    .Select(g => new PaymentMethodReportItem { PaymentMethod = g.Key, Total = g.Sum(x => Math.Abs(x.Amount)) })
+                    .OrderByDescending(x => x.Total)
+                    .ToList();
+
+                var creditMethods = yearExpenses
+                    .Where(x => string.Equals(x.TransactionType, "Credit", StringComparison.OrdinalIgnoreCase))
+                    .GroupBy(x => string.IsNullOrWhiteSpace(x.PaymentMethod) ? "NEFT" : x.PaymentMethod)
+                    .Select(g => new PaymentMethodReportItem { PaymentMethod = g.Key, Total = g.Sum(x => Math.Abs(x.Amount)) })
+                    .OrderByDescending(x => x.Total)
+                    .ToList();
+
+                DebitPaymentMethodItems = new ObservableCollection<PaymentMethodReportItem>(debitMethods);
+                CreditPaymentMethodItems = new ObservableCollection<PaymentMethodReportItem>(creditMethods);
 
                 // Update timeline year selectors
                 var years = await _repository.GetAvailableExpenseYearsAsync();
@@ -134,14 +184,12 @@ namespace ExpenseTracker.ViewModels
         {
             if (selectedMonth == null) return;
 
-            // Package the date filters to pass to the target transaction detail view
             var navigationParameters = new Dictionary<string, object>
-    {
-        { "month", selectedMonth.Month },
-        { "year", selectedMonth.Year }
-    };
+            {
+                { "month", selectedMonth.Month },
+                { "year", selectedMonth.Year }
+            };
 
-            // Routes the navigation query targeting the registered monthly details container
             await Shell.Current.GoToAsync("MonthlyDetailsPage", navigationParameters);
         }
 
@@ -150,16 +198,13 @@ namespace ExpenseTracker.ViewModels
         {
             if (selectedMethod == null) return;
 
-            // Package the payment method name and selected year filter for the details page
             var navigationParameters = new Dictionary<string, object>
-    {
-        { "paymentMethod", selectedMethod.PaymentMethod },
-        { "year", SelectedYear }
-    };
+            {
+                { "paymentMethod", selectedMethod.PaymentMethod },
+                { "year", SelectedYear }
+            };
 
-            // Route the navigation request to the payment method details container
             await Shell.Current.GoToAsync("PaymentMethodDetailsPage", navigationParameters);
         }
-
     }
 }

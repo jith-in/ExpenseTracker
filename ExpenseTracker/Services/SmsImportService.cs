@@ -98,13 +98,24 @@ namespace ExpenseTracker.Services
 
                         System.Diagnostics.Debug.WriteLine($"[AI Pipeline Cache] Staging unrecognized transaction template for intermediate review: \"{message.Body}\"");
 
+                        // 🎯 SAFELY EVALUATE DIRECTION TO PREVENT MISCLASSIFYING ICICI DEBITS
+                        string stagedDirection = "Debit";
+                        if (lowerBody.Contains("debited for") || lowerBody.Contains("debited rs") || (lowerBody.Contains("acct") && lowerBody.Contains("debited")))
+                        {
+                            stagedDirection = "Debit";
+                        }
+                        else if (lowerBody.Contains("credited") && (lowerBody.Contains("neft") || lowerBody.Contains("salary") || lowerBody.Contains("received")))
+                        {
+                            stagedDirection = "Credit";
+                        }
+
                         // 3. Construct a raw staging import record with tracking flags
                         var unparsedImport = new ImportedTransaction
                         {
                             Amount = 0,
                             Merchant = "Unparsed Financial SMS",
                             SuggestedCategory = "Pending AI Analysis", // 🚩 Our specific structural pipeline marker flag
-                            TransactionType = lowerBody.Contains("credited") ? "Credit" : "Debit",
+                            TransactionType = stagedDirection, // 🟢 FIXED: Safely evaluated direction
                             SmsContent = message.Body,
                             SmsReceivedDate = message.ReceivedDate,
                             IsProcessed = false
@@ -292,6 +303,16 @@ namespace ExpenseTracker.Services
 
         private bool IsPendingTransaction(string body)
         {
+            var text = body.ToLowerInvariant();
+
+            // 🎯 Filter out credit card statement generation and due date notifications
+            if (text.Contains("statement is sent") ||
+                (text.Contains("minimum of") && text.Contains("is due by")) ||
+                text.Contains("total amount due"))
+            {
+                return true;
+            }
+
             return Regex.IsMatch(body,
                 @"\b(will be debited|will be credited|debited shortly|credited shortly|scheduled|due for debit|due for payment|is due on)\b",
                 RegexOptions.IgnoreCase);

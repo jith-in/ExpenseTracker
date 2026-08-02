@@ -19,8 +19,32 @@
                    IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}"
                    FontAttributes="Bold" />
 
+            <!-- 🎯 NEW: Monthly Expense Budget Configuration Card -->
+            <Border Background="{DynamicResource CardBackground}" 
+                    StrokeShape="RoundRectangle 12" 
+                    StrokeThickness="0" 
+                    Padding="16" 
+                    Margin="0">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Monthly Expense Budget" FontAttributes="Bold" FontSize="16" />
+                    <Label Text="Set a monthly spending limit to trigger warning alerts when approaching your limit." 
+                           FontSize="Small" 
+                           TextColor="Gray" />
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Entry Grid.Column="0" 
+                               Placeholder="Enter Budget (e.g., 85000)" 
+                               Keyboard="Numeric" 
+                               Text="{Binding MonthlyBudgetText}" />
+
+                        <Button Grid.Column="1" 
+                                Text="Save Budget" 
+                                Command="{Binding SaveBudgetCommand}" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
             <!-- Data Management Section -->
-            <!-- Configured to use Border container with Dynamic Card Context color parameters -->
             <Border Background="{DynamicResource CardBackground}" 
                     StrokeShape="RoundRectangle 12" 
                     StrokeThickness="0" 
@@ -55,7 +79,6 @@
             </Border>
 
             <!-- Info Section -->
-            <!-- Configured to use Border container with Dynamic Card Context color parameters -->
             <Border Background="{DynamicResource CardBackground}" 
                     StrokeShape="RoundRectangle 12" 
                     StrokeThickness="0" 
@@ -71,20 +94,16 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Label Text="" />
+            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                <Label Text="Dark Mode" VerticalOptions="Center" />
+                <Switch IsToggled="{Binding IsDarkModeEnabled, Mode=TwoWay}" />
+            </HorizontalStackLayout>
 
             <Label Text="Version 1.0" 
                    FontSize="Small" 
                    TextColor="Gray"
                    HorizontalTextAlignment="Center" />
 
-            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                <Label Text="Dark Mode" VerticalOptions="Center" />
-                <!-- Mode=TwoWay explicitly guarantees UI toggles communicate state changes cleanly down to the ViewModel -->
-                <Switch IsToggled="{Binding IsDarkModeEnabled, Mode=TwoWay}" />
-            </HorizontalStackLayout>
-
-            <Label Text="{Binding StatusMessage}" TextColor="Green" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

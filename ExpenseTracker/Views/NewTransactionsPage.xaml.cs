@@ -38,6 +38,7 @@ namespace ExpenseTracker.Views
             try
             {
                 await ((NewTransactionsViewModel)BindingContext).LoadNewTransactionsAsync();
+
             }
             catch (Exception ex)
             {
