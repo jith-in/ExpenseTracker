@@ -5,162 +5,81 @@
              xmlns:models="clr-namespace:ExpenseTracker.Models"
              x:Class="ExpenseTracker.Views.ReportsPage"
              x:DataType="vm:ReportsViewModel"
-             Title="Reports">
+             Title="Current Period Report">
 
-    <!-- The root ScrollView now handles 100% of the page scrolling cleanly -->
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
-            <Label Text="Reports" FontSize="Large" FontAttributes="Bold" />
 
-            <Picker Title="Year" ItemsSource="{Binding AvailableYears}" SelectedItem="{Binding SelectedYear}" />
+            <Label Text="Transaction Period Report" FontSize="Large" FontAttributes="Bold" />
+            <Label Text="{Binding PeriodLabel}" FontSize="Small" TextColor="Gray" />
 
-            <Line Stroke="Gray" StrokeThickness="1" Margin="0,5" />
+            <!-- ================= EXPENSES (DEBITS) TILE ================= -->
+            <Frame BackgroundColor="#2D1F1F" CornerRadius="12" Padding="16" HasShadow="True">
+                <Frame.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ToggleExpensesCommand}" />
+                </Frame.GestureRecognizers>
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Expenses (Debits)" FontSize="Medium" FontAttributes="Bold" TextColor="Red" VerticalOptions="Center" />
+                        <Label Text="{Binding TotalExpenses, StringFormat='₹{0:N2}'}" Grid.Column="1" FontSize="Medium" FontAttributes="Bold" TextColor="Red" VerticalOptions="Center" />
+                    </Grid>
+                    <Label Text="Tap to view itemized list" FontSize="Micro" TextColor="Gray" />
+                </VerticalStackLayout>
+            </Frame>
 
-            <!-- ================= CATEGORY WISE SECTION ================= -->
-            <Label Text="Category Wise" FontSize="Medium" FontAttributes="Bold" />
-
-            <!-- Category Expenses -->
-            <Label Text="Expenses (Debits)" FontAttributes="Bold" TextColor="Red" FontSize="Small" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding DebitCategoryItems}">
+            <!-- Itemized Expenses List -->
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding ExpenseTransactions}" IsVisible="{Binding IsExpensesListVisible}">
                 <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="models:CategoryReportItem">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer 
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ReportsViewModel}}, Path=ViewCategoryDetailsCommand}"
-                                    CommandParameter="{Binding .}" />
-                            </Frame.GestureRecognizers>
+                    <DataTemplate x:DataType="models:Expense">
+                        <Frame BackgroundColor="DarkSlateGray" CornerRadius="8" Padding="12" Margin="0,0,0,8">
                             <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding Category}" VerticalOptions="Center" />
-                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" FontAttributes="Bold" />
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="{Binding Category}" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding Note}" FontSize="Caption" TextColor="LightGray" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Date, StringFormat='{0:dd MMM yyyy}'}" FontSize="Micro" TextColor="Gray" />
+                                </VerticalStackLayout>
+                                <Label Text="{Binding Amount, StringFormat='-₹{0:N2}'}" Grid.Column="1" TextColor="#FF6B6B" FontAttributes="Bold" VerticalOptions="Center" />
                             </Grid>
                         </Frame>
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
             </VerticalStackLayout>
 
-            <!-- Category Income -->
-            <Label Text="Income (Credits)" FontAttributes="Bold" TextColor="Green" FontSize="Small" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding CreditCategoryItems}">
+            <!-- ================= INCOME (CREDITS) TILE ================= -->
+            <Frame BackgroundColor="#1F2D20" CornerRadius="12" Padding="16" HasShadow="True">
+                <Frame.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ToggleIncomeCommand}" />
+                </Frame.GestureRecognizers>
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Income (Credits)" FontSize="Medium" FontAttributes="Bold" TextColor="Green" VerticalOptions="Center" />
+                        <Label Text="{Binding TotalIncome, StringFormat='₹{0:N2}'}" Grid.Column="1" FontSize="Medium" FontAttributes="Bold" TextColor="Green" VerticalOptions="Center" />
+                    </Grid>
+                    <Label Text="Tap to view itemized list" FontSize="Micro" TextColor="Gray" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Itemized Income List -->
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding IncomeTransactions}" IsVisible="{Binding IsIncomeListVisible}">
                 <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="models:CategoryReportItem">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer 
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ReportsViewModel}}, Path=ViewCategoryDetailsCommand}"
-                                    CommandParameter="{Binding .}" />
-                            </Frame.GestureRecognizers>
+                    <DataTemplate x:DataType="models:Expense">
+                        <Frame BackgroundColor="DarkSlateGray" CornerRadius="8" Padding="12" Margin="0,0,0,8">
                             <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding Category}" VerticalOptions="Center" />
-                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" FontAttributes="Bold" />
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="{Binding Category}" FontAttributes="Bold" TextColor="White" />
+                                    <Label Text="{Binding Note}" FontSize="Caption" TextColor="LightGray" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Date, StringFormat='{0:dd MMM yyyy}'}" FontSize="Micro" TextColor="Gray" />
+                                </VerticalStackLayout>
+                                <Label Text="{Binding Amount, StringFormat='+₹{0:N2}'}" Grid.Column="1" TextColor="#51CF66" FontAttributes="Bold" VerticalOptions="Center" />
                             </Grid>
                         </Frame>
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
             </VerticalStackLayout>
 
-            <Line Stroke="Gray" StrokeThickness="0.5" Margin="0,5" />
-
-            <!-- ================= MONTHLY WISE SECTION ================= -->
-            <Label Text="Monthly Wise" FontSize="Medium" FontAttributes="Bold" />
-
-            <!-- Monthly Expenses -->
-            <Label Text="Expenses (Debits)" FontAttributes="Bold" TextColor="Red" FontSize="Small" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding DebitMonthlyItems}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="models:MonthlyReportItem">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer 
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ReportsViewModel}}, Path=ViewMonthlyDetailsCommand}"
-                                    CommandParameter="{Binding .}" />
-                            </Frame.GestureRecognizers>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding MonthName}" VerticalOptions="Center" />
-                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" FontAttributes="Bold" />
-                            </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </VerticalStackLayout>
-
-            <!-- Monthly Income -->
-            <Label Text="Income (Credits)" FontAttributes="Bold" TextColor="Green" FontSize="Small" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding CreditMonthlyItems}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="models:MonthlyReportItem">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer 
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ReportsViewModel}}, Path=ViewMonthlyDetailsCommand}"
-                                    CommandParameter="{Binding .}" />
-                            </Frame.GestureRecognizers>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding MonthName}" VerticalOptions="Center" />
-                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" FontAttributes="Bold" />
-                            </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </VerticalStackLayout>
-
-            <Line Stroke="Gray" StrokeThickness="0.5" Margin="0,5" />
-
-            <!-- ================= PAYMENT METHOD WISE SECTION ================= -->
-            <Label Text="Payment Method Wise" FontSize="Medium" FontAttributes="Bold" />
-
-            <!-- Payment Method Expenses -->
-            <Label Text="Expenses (Debits)" FontAttributes="Bold" TextColor="Red" FontSize="Small" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding DebitPaymentMethodItems}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="models:PaymentMethodReportItem">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                            <!-- ✅ ADDED: Gesture Recognizer routing for Payment Method Expenses -->
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer 
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ReportsViewModel}}, Path=ViewPaymentMethodDetailsCommand}"
-                                    CommandParameter="{Binding .}" />
-                            </Frame.GestureRecognizers>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding PaymentMethod}" VerticalOptions="Center" />
-                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" FontAttributes="Bold" />
-                            </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </VerticalStackLayout>
-
-            <!-- Payment Method Income -->
-            <Label Text="Income (Credits)" FontAttributes="Bold" TextColor="Green" FontSize="Small" />
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding CreditPaymentMethodItems}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate x:DataType="models:PaymentMethodReportItem">
-                        <Frame BackgroundColor="Grey" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                            <!-- ✅ ADDED: Gesture Recognizer routing for Payment Method Income -->
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer 
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:ReportsViewModel}}, Path=ViewPaymentMethodDetailsCommand}"
-                                    CommandParameter="{Binding .}" />
-                            </Frame.GestureRecognizers>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding PaymentMethod}" VerticalOptions="Center" />
-                                <Label Text="{Binding Total, StringFormat='₹{0:F2}'}" Grid.Column="1" VerticalOptions="Center" FontAttributes="Bold" />
-                            </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </VerticalStackLayout>
-
-            <!-- Status Error Output -->
+            <!-- Status Message -->
             <Label Text="{Binding StatusMessage}" TextColor="Red" IsVisible="{Binding StatusMessage, Converter={StaticResource StringNotNullOrEmptyConverter}}" />
 
-            <!-- Destructive Action Link Button -->
-            <Button Text="Go to System Reset"
-                    Clicked="OnResetClicked"
-                    BackgroundColor="DarkRed"
-                    TextColor="White"
-                    FontAttributes="Bold"
-                    Margin="0,20,0,0" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

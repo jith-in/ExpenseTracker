@@ -52,6 +52,7 @@ TestResults/
 # User-specific files
 *.pidb
 *.userprefs
+Secrets.cs
 
 # Others
 *.publishsettings

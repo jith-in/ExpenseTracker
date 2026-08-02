@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using ExpenseTracker.Views;
 
 namespace ExpenseTracker
 {
@@ -19,7 +20,10 @@ namespace ExpenseTracker
             Debug.WriteLine("Startup: App.CreateWindow begin");
             try
             {
-                var window = new Window(new AppShell());
+                // 🎯 Launch into PinLockPage first instead of AppShell
+                var lockPage = Services.GetRequiredService<PinLockPage>();
+                var window = new Window(lockPage);
+
                 Debug.WriteLine("Startup: App.CreateWindow end");
                 return window;
             }

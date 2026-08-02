@@ -5,6 +5,7 @@ using ExpenseTracker.Repositories;
 using ExpenseTracker.Services;
 using Microsoft.Maui.Devices;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
@@ -35,10 +36,11 @@ namespace ExpenseTracker.ViewModels
         private bool _isYearBreakdownVisible;
         private bool _hasPendingAiTransactions;
 
-        // Backing Fields for Dynamic Budget Tile
+        // Backing Fields for Dynamic Budget & Savings Tiles
         private decimal _monthlyBudget;
         private decimal _remainingBudget;
         private bool _hasBudgetSet;
+        private decimal _netSavings; // 🎯 Added for Net Unspent Cash Saved
 
         public DashboardViewModel(IExpenseRepository repository, IAiService aiService)
         {
@@ -114,7 +116,7 @@ namespace ExpenseTracker.ViewModels
             set => SetProperty(ref _thisYearDebit, value);
         }
 
-        // ================= BUDGET METRIC PROPERTIES =================
+        // ================= BUDGET & SAVINGS METRIC PROPERTIES =================
 
         public decimal MonthlyBudget
         {
@@ -132,6 +134,13 @@ namespace ExpenseTracker.ViewModels
         {
             get => _hasBudgetSet;
             set => SetProperty(ref _hasBudgetSet, value);
+        }
+
+        // 🎯 Net Unspent Cash Saved (Income - Expenses)
+        public decimal NetSavings
+        {
+            get => _netSavings;
+            set => SetProperty(ref _netSavings, value);
         }
 
         // ================= INTERACTIVE VISIBILITY FLAGS =================
@@ -186,10 +195,10 @@ namespace ExpenseTracker.ViewModels
                 var imported = await _repository.GetImportedTransactionsAsync();
                 var now = DateTime.Today;
 
-                // 1. Calculate Today's Pure Volume using absolute metrics
+                // 1. Calculate Today's Pure Volume
                 TodayTotal = expenses.Where(x => x.Date.Date == now.Date).Sum(x => Math.Abs(x.Amount));
 
-                // 2. Aggregate and segment "This Year" Data Rows safely
+                // 2. Aggregate and segment "This Year" Data Rows
                 var yearTransactions = expenses.Where(x => x.Date.Year == now.Year).ToList();
 
                 ThisYearCredit = yearTransactions
@@ -201,7 +210,7 @@ namespace ExpenseTracker.ViewModels
                              || string.IsNullOrWhiteSpace(x.TransactionType))
                     .Sum(x => Math.Abs(x.Amount));
 
-                YearTotal = ThisYearCredit - ThisYearDebit; // Clean net balance
+                YearTotal = ThisYearCredit - ThisYearDebit;
 
                 // 🎯 3. Calculate rolling monthly statement period (20th to 20th window)
                 DateTime monthStartDate = now.Day < 20
@@ -209,7 +218,6 @@ namespace ExpenseTracker.ViewModels
                     : new DateTime(now.Year, now.Month, 20);
                 DateTime monthEndDate = monthStartDate.AddMonths(1);
 
-                // Filter transactions falling inside the active statement cycle
                 var monthTransactions = expenses
                     .Where(x => x.Date >= monthStartDate && x.Date < monthEndDate)
                     .ToList();
@@ -223,9 +231,12 @@ namespace ExpenseTracker.ViewModels
                              || string.IsNullOrWhiteSpace(x.TransactionType))
                     .Sum(x => Math.Abs(x.Amount));
 
-                MonthTotal = ThisMonthDebit; // Set to total spending magnitude or net balance (ThisMonthCredit - ThisMonthDebit)
+                MonthTotal = ThisMonthDebit;
 
-                // 4. Compute Remaining Budget Metrics
+                // 🎯 4. Calculate Net Unspent Cash Saved from Income
+                NetSavings = ThisMonthCredit - ThisMonthDebit;
+
+                // 5. Compute Remaining Budget Metrics
                 MonthlyBudget = await _repository.GetMonthlyBudgetAsync();
                 if (MonthlyBudget > 0)
                 {

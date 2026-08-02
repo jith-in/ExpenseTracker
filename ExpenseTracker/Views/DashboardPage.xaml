@@ -44,7 +44,7 @@
                 </Grid>
             </Border>
 
-            <!-- ================= 🎯 NEW: REMAINING BUDGET TILE ================= -->
+            <!-- ================= REMAINING BUDGET TILE ================= -->
             <Border BackgroundColor="LightGray" 
                     StrokeThickness="0" 
                     StrokeShape="RoundRectangle 12" 
@@ -76,6 +76,37 @@
                 </Grid>
             </Border>
 
+            <!-- ================= 🎯 NET UNSPENT CASH SAVED TILE ================= -->
+            <Border BackgroundColor="LightGray" 
+                    StrokeThickness="0" 
+                    StrokeShape="RoundRectangle 12" 
+                    Padding="16">
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="4">
+                    <Label Grid.Row="0" Grid.Column="0" 
+                           Text="Net Unspent Cash Saved" 
+                           FontAttributes="Bold" 
+                           TextColor="Black" />
+
+                    <Label Grid.Row="0" Grid.Column="1" 
+                           Text="Period Net Flow" 
+                           FontSize="Small" 
+                           TextColor="DimGray" 
+                           VerticalOptions="Center" />
+
+                    <Label Grid.Row="1" Grid.Column="0" 
+                           Text="{Binding NetSavings, StringFormat='₹{0:N2}'}" 
+                           FontSize="24" 
+                           FontAttributes="Bold" 
+                           TextColor="DarkGreen" />
+
+                    <Label Grid.Row="1" Grid.Column="1" 
+                           Text="Income − Expenses" 
+                           FontSize="Caption" 
+                           TextColor="DimGray" 
+                           VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
             <!-- ================= DYNAMIC METRICS SUMMARY PANELS ================= -->
 
             <!-- This Month Card Layout -->
@@ -99,31 +130,6 @@
 
                         <Label Grid.Row="1" Grid.Column="0" Text="Expenses (Debits)" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
                         <Label Grid.Row="1" Grid.Column="1" Text="{Binding ThisMonthDebit, StringFormat='₹{0:F2}'}" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
-                    </Grid>
-                </Grid>
-            </Border>
-
-            <!-- This Year Card Layout -->
-            <Border BackgroundColor="LightGray" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="16">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="2">
-                    <Grid.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ToggleYearBreakdownCommand}" />
-                    </Grid.GestureRecognizers>
-
-                    <Label Grid.Row="0" Text="This Year" FontAttributes="Bold" TextColor="Black" />
-                    <Label Grid.Row="1" Text="{Binding YearTotal, StringFormat='₹{0:F2}'}" FontSize="24" TextColor="Black" />
-                    <Label Grid.Row="2" Text="Click to view credit/debit details" FontSize="Caption" TextColor="DimGray" Margin="0,2,0,0" />
-
-                    <!-- Dynamic Separator Line -->
-                    <Line Grid.Row="3" Stroke="Gray" StrokeThickness="0.5" Margin="0,10" IsVisible="{Binding IsYearBreakdownVisible}" />
-
-                    <!-- Collapsible Yearly Split Detail Grid Matrix -->
-                    <Grid Grid.Row="4" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="6" IsVisible="{Binding IsYearBreakdownVisible}">
-                        <Label Grid.Row="0" Grid.Column="0" Text="Income (Credits)" TextColor="Green" FontSize="Small" FontAttributes="Bold" />
-                        <Label Grid.Row="0" Grid.Column="1" Text="{Binding ThisYearCredit, StringFormat='₹{0:F2}'}" TextColor="Green" FontSize="Small" FontAttributes="Bold" />
-
-                        <Label Grid.Row="1" Grid.Column="0" Text="Expenses (Debits)" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
-                        <Label Grid.Row="1" Grid.Column="1" Text="{Binding ThisYearDebit, StringFormat='₹{0:F2}'}" TextColor="Red" FontSize="Small" FontAttributes="Bold" />
                     </Grid>
                 </Grid>
             </Border>

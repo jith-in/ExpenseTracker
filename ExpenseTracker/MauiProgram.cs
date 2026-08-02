@@ -9,6 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
+#if ANDROID
+using Plugin.Fingerprint;
+#endif
+
 namespace ExpenseTracker
 {
     public static class MauiProgram
@@ -16,6 +20,11 @@ namespace ExpenseTracker
         public static MauiApp CreateMauiApp()
         {
             Debug.WriteLine("Startup: CreateMauiApp begin");
+
+#if ANDROID
+            // 🎯 Register the Android Activity resolver at startup to prevent "Resolver not set" errors
+            CrossFingerprint.SetCurrentActivityResolver(() => Microsoft.Maui.ApplicationModel.Platform.CurrentActivity);
+#endif
 
             var builder = MauiApp.CreateBuilder();
             builder
@@ -65,6 +74,9 @@ namespace ExpenseTracker
             builder.Services.AddTransient<Views.MonthlyDetailsPage>();
             builder.Services.AddTransient<Views.PaymentMethodDetailsPage>();
             builder.Services.AddSingleton<IBudgetAlertService, BudgetAlertService>();
+            builder.Services.AddTransient<PinLockViewModel>();
+            builder.Services.AddTransient<PinLockPage>();
+
 #if DEBUG
             builder.Logging.AddDebug();
 #endif

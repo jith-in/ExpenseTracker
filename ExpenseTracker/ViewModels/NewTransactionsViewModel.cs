@@ -140,7 +140,7 @@ namespace ExpenseTracker.ViewModels
                                         localMatch.Amount = aiItem.Amount ?? 0.00m; // Safeguards against completely redacted text flags
                                         localMatch.Merchant = !string.IsNullOrWhiteSpace(aiItem.MerchantOrEntity) ? aiItem.MerchantOrEntity : "Unknown Entity";
                                         localMatch.SuggestedCategory = !string.IsNullOrWhiteSpace(aiItem.Category) ? aiItem.Category : "Miscellaneous";
-                                        localMatch.ReferenceNumber = aiItem.TransactionId;
+                                        localMatch.ReferenceNumber = aiItem.TransactionId ?? string.Empty;
 
                                         // Enforce uniform type validation casing context checks 
                                         localMatch.TransactionType = NormalizeTransactionDirection(aiItem.TransactionType, localMatch.SmsContent);
@@ -154,7 +154,7 @@ namespace ExpenseTracker.ViewModels
                     }
                     finally
                     {
-                        LogSmsToVisualStudioConsole(processedData.unprocessedBacklog);
+                        //LogSmsToVisualStudioConsole(processedData.unprocessedBacklog);
                         IsAiAnalyzing = false;
                     }
                 }
